@@ -15,7 +15,7 @@ namespace Shouldly.FromAssert.Tests
     public class NUnitToShouldlyConverterTests
     {
 
-        private class CodeFixTest : CSharpCodeFixTest<NUnitToShouldlyConverterAnalyzer, NUnitAssertToShouldlyConverterCodeFixProvider, NUnitVerifier>
+        private class CodeFixTest : CSharpCodeFixTest<NUnitToShouldlyConverterAnalyzerThat, NUnitAssertToShouldlyConverterCodeFixProviderThat, NUnitVerifier>
         {
             public CodeFixTest(
                 string source,
@@ -72,8 +72,8 @@ namespace TestNamespace
     }
 }";
             var codeFixTest = new CodeFixTest(test, expected,
-                    CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
-                        .Diagnostic(NUnitToShouldlyConverterAnalyzer.DiagnosticId)
+                    CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzerThat, NUnitVerifier>
+                        .Diagnostic(NUnitToShouldlyConverterAnalyzerThat.DiagnosticId)
                     .WithSpan(13, 13, 13, 55));
             
             await codeFixTest.RunAsync(CancellationToken.None);
