@@ -1,0 +1,83 @@
+﻿using System.Collections.Immutable;
+using System.Threading.Tasks;
+using Microsoft;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CodeFixes;
+using Microsoft.CodeAnalysis.CSharp.Testing;
+using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Testing;
+using Microsoft.CodeAnalysis.Testing.Verifiers;
+using NUnit.Framework;
+using Shouldly.FromAssert;
+
+namespace Shouldly.FromAssert.Tests
+{
+    public class NUnitToShouldlyConverterTests
+    {
+
+        private class CodeFixTest : CSharpCodeFixTest<NUnitToShouldlyConverterAnalyzer, NUnitAssertToShouldlyConverterCodeFixProvider, NUnitVerifier>
+        {
+            public CodeFixTest(
+                string source,
+                string fixedSource,
+                params DiagnosticResult[] expected)
+            {
+                TestCode = source;
+                FixedCode = fixedSource;
+                ExpectedDiagnostics.AddRange(expected);
+
+                ReferenceAssemblies = ReferenceAssemblies.Default
+                    .AddPackages(ImmutableArray.Create(
+                            new PackageIdentity("Shouldly", "4.2.1"),
+                            new PackageIdentity("NUnit", "3.13.3")
+                        )
+                    );
+            }
+        }
+
+        [Test]
+        public async Task TestConversion()
+        {
+            var test = @"
+using NUnit.Framework;
+using Shouldly;
+
+namespace TestNamespace
+{
+    public class TestClass
+    {
+        [Test]
+        public void TestMethod()
+        {
+            var contestant = 1337;
+            Assert.That(contestant, Is.EqualTo(1337));
+        }
+    }
+}";
+
+            var expected = @"
+using NUnit.Framework;
+using Shouldly;
+
+namespace TestNamespace
+{
+    public class TestClass
+    {
+        [Test]
+        public void TestMethod()
+        {
+            var contestant = 1337;
+            contestant.ShouldBe(1337);
+        }
+    }
+}";
+            var codeFixTest = new CodeFixTest(test, expected,
+                    CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
+                        .Diagnostic(NUnitToShouldlyConverterAnalyzer.DiagnosticId)
+                    .WithSpan(13, 13, 13, 55));
+            
+            await codeFixTest.RunAsync(CancellationToken.None);
+            var a = codeFixTest.CompilerDiagnostics;
+        }
+    }
+}
