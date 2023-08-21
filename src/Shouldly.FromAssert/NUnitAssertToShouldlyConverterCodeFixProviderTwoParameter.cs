@@ -11,17 +11,17 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Shouldly.FromAssert
 {
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NUnitAssertToShouldlyConverterCodeFixProviderSingleParameter)), Shared]
-    public class NUnitAssertToShouldlyConverterCodeFixProviderSingleParameter : CodeFixProvider
+    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NUnitAssertToShouldlyConverterCodeFixProviderTwoParameter)), Shared]
+    public class NUnitAssertToShouldlyConverterCodeFixProviderTwoParameter : CodeFixProvider
     {
         private const string Title = "Convert to Shouldly";
-        public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(NUnitToShouldlyConverterAnalyzerSingleParameter.DiagnosticId);
+        public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(NUnitToShouldlyConverterAnalyzerTwoParameter.DiagnosticId);
 
         public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
         public override async Task RegisterCodeFixesAsync(CodeFixContext context)
         {
-            var diagnostic = context.Diagnostics.First(x => x.Id == NUnitToShouldlyConverterAnalyzerSingleParameter.DiagnosticId);
+            var diagnostic = context.Diagnostics.First(x => x.Id == NUnitToShouldlyConverterAnalyzerTwoParameter.DiagnosticId);
             var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
             var diagnosticSpan = diagnostic.Location.SourceSpan;
 
@@ -39,14 +39,15 @@ namespace Shouldly.FromAssert
         {
             if (expression.Parent is InvocationExpressionSyntax invocation &&
                 invocation.Expression is MemberAccessExpressionSyntax methodAccess &&
-                NUnitToShouldlyConverterAnalyzerSingleParameter.ListOfSingleParameterMethods.ContainsKey(methodAccess.Name.Identifier.ValueText) &&
+                NUnitToShouldlyConverterAnalyzerTwoParameter.ListOfTwoParameterMethods.ContainsKey(methodAccess.Name.Identifier.ValueText) &&
                 methodAccess.Expression is IdentifierNameSyntax identifierName &&
                 identifierName.Identifier.ValueText == "Assert" &&
-                invocation.ArgumentList.Arguments.Count == 1)
+                invocation.ArgumentList.Arguments.Count == 2)
             {
-                var underTest = invocation.ArgumentList.Arguments[0].Expression;
-                var should = NUnitToShouldlyConverterAnalyzerSingleParameter.ListOfSingleParameterMethods[methodAccess.Name.Identifier.ValueText];
-                var newExpression = SyntaxFactory.ParseExpression($"{invocation.GetLeadingTrivia().ToFullString()}{underTest}.{should}()");
+                var expected = invocation.ArgumentList.Arguments[0].Expression;
+                var underTest = invocation.ArgumentList.Arguments[1].Expression;
+                var should = NUnitToShouldlyConverterAnalyzerTwoParameter.ListOfTwoParameterMethods[methodAccess.Name.Identifier.ValueText];
+                var newExpression = SyntaxFactory.ParseExpression($"{invocation.GetLeadingTrivia().ToFullString()}{underTest}.{should}({expected})");
                 var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
                 var newRoot = root.ReplaceNode(expression.Parent, newExpression);
                 return document.WithSyntaxRoot(newRoot);

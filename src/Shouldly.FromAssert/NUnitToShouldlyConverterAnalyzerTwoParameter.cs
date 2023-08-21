@@ -8,9 +8,9 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Shouldly.FromAssert
 {
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
-    public class NUnitToShouldlyConverterAnalyzerSingleParameter : DiagnosticAnalyzer
+    public class NUnitToShouldlyConverterAnalyzerTwoParameter : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "SHU002";
+        public const string DiagnosticId = "SHU003";
 
         public static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
             DiagnosticId,
@@ -34,22 +34,25 @@ namespace Shouldly.FromAssert
             var invocationExpression = (InvocationExpressionSyntax)context.Node;
 
             if (invocationExpression.Expression is MemberAccessExpressionSyntax memberAccess &&
-                ListOfSingleParameterMethods.ContainsKey(memberAccess.Name.Identifier.ValueText) &&
+                ListOfTwoParameterMethods.ContainsKey(memberAccess.Name.Identifier.ValueText) &&
                 memberAccess.Expression is IdentifierNameSyntax identifierName &&
                 identifierName.Identifier.ValueText == "Assert" &&
-                invocationExpression.ArgumentList.Arguments.Count == 1)
+                invocationExpression.ArgumentList.Arguments.Count == 2)
             {
                 var diagnostic = Diagnostic.Create(Rule, invocationExpression.Parent.GetLocation());
                 context.ReportDiagnostic(diagnostic);
             }
         }
-        internal static Dictionary<string, string> ListOfSingleParameterMethods = new Dictionary<string,string>()
+        internal static Dictionary<string, string> ListOfTwoParameterMethods = new Dictionary<string, string>()
         {
-            {"True","ShouldBeTrue"},
-            {"False","ShouldBeFalse"},
-            {"Null","ShouldBeNull"} ,
-            {"NotNull","ShouldNotBeNull"},
-            {"IsEmpty", "ShouldBeEmpty"}
+            {"AreEqual","ShouldBe"},
+            {"AreNotEqual","ShouldNotBe"},
+            {"AreSame","ShouldBe"} ,
+            {"AreNotSame","ShouldNotBe"},
+            {"Contains", "ShouldContain"},
+            {"IsInstanceOf", "ShouldBeOfType"},
+            {"IsNotInstanceOf", "ShouldNotBeOfType"},
+            {"IsAssignableFrom", "ShouldBeAssignableTo"}
         };
     }
 }
