@@ -61,6 +61,15 @@ namespace Shouldly.FromAssert
                 var diagnostic = Diagnostic.Create(Rule, invocationExpression.Parent.GetLocation());
                 context.ReportDiagnostic(diagnostic);
             }
+
+            if (invocationExpression.Expression is MemberAccessExpressionSyntax memberAccessT &&
+                memberAccessT.Name.Identifier.ValueText == "Throws" &&
+                memberAccessT.Expression is IdentifierNameSyntax identifierNameT &&
+                identifierNameT.Identifier.ValueText == "Assert")
+            {
+                var diagnostic = Diagnostic.Create(Rule, invocationExpression.Parent.GetLocation());
+                context.ReportDiagnostic(diagnostic);
+            }
         }
         internal static Dictionary<string, string> ListOfSingleParameterMethods = new Dictionary<string, string>()
         {

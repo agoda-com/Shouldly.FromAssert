@@ -2,6 +2,7 @@
 using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
@@ -85,6 +86,21 @@ namespace Shouldly.FromAssert
                 var newRoot = root.ReplaceNode(expression.Parent, newExpression);
                 return document.WithSyntaxRoot(newRoot);
             }
+
+            if (expression.Parent is InvocationExpressionSyntax invocationT &&
+                invocationT.Expression is MemberAccessExpressionSyntax methodAccessT &&
+                methodAccessT.Name.Identifier.ValueText == "Throws" &&
+                methodAccessT.Expression is IdentifierNameSyntax identifierNameT &&
+                identifierNameT.Identifier.ValueText == "Assert")
+            {
+                var underTest = ((InvocationExpressionSyntax)identifierNameT.Parent.Parent).ArgumentList.Arguments[0];
+                var genericName = ((GenericNameSyntax)methodAccessT.Name).TypeArgumentList.Arguments[0];
+                var newExpression = SyntaxFactory.ParseExpression($"{identifierNameT.GetLeadingTrivia().ToFullString()}Should.Throw<{genericName}>({underTest})");
+                var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+                var newRoot = root.ReplaceNode(expression.Parent, newExpression);
+                return document.WithSyntaxRoot(newRoot);
+            }
+
             return document;
         }
     }

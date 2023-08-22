@@ -79,5 +79,58 @@ namespace TestNamespace
             await codeFixTest.RunAsync(CancellationToken.None);
             var a = codeFixTest.CompilerDiagnostics;
         }
+
+        [Test]
+        public async Task TestThrow()
+        {
+            var test = @"
+using NUnit.Framework;
+using Shouldly;
+using System;
+
+namespace TestNamespace
+{
+    public class TestClass
+    {
+        [Test]
+        public void TestMethod()
+        {
+            var denominator = 1;
+            Assert.Throws<NullReferenceException>(() =>
+            {
+                var y = 3000 / denominator;
+            });
+        }
+    }
+}";
+
+            var expected = @"
+using NUnit.Framework;
+using Shouldly;
+using System;
+
+namespace TestNamespace
+{
+    public class TestClass
+    {
+        [Test]
+        public void TestMethod()
+        {
+            var denominator = 1;
+            Should.Throw<NullReferenceException>(() =>
+            {
+                var y = 3000 / denominator;
+            });
+        }
+    }
+}";
+            var codeFixTest = new CodeFixTest(test, expected,
+                CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
+                    .Diagnostic(NUnitToShouldlyConverterAnalyzer.DiagnosticId)
+                    .WithSpan(14, 13, 17, 16));
+
+            await codeFixTest.RunAsync(CancellationToken.None);
+            var a = codeFixTest.CompilerDiagnostics;
+        }
     }
 }
