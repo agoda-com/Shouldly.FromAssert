@@ -12,17 +12,17 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Shouldly.FromAssert
 {
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NUnitAssertToShouldlyConverterCodeFixProviderThat)), Shared]
-    public class NUnitAssertToShouldlyConverterCodeFixProviderThat : CodeFixProvider
+    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NUnitAssertToShouldlyConverterCodeFixProvider)), Shared]
+    public class NUnitAssertToShouldlyConverterCodeFixProvider : CodeFixProvider
     {
         private const string Title = "Convert to Shouldly";
-        public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(NUnitToShouldlyConverterAnalyzerThat.DiagnosticId);
+        public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(NUnitToShouldlyConverterAnalyzer.DiagnosticId);
 
         public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
         public override async Task RegisterCodeFixesAsync(CodeFixContext context)
         {
-            var diagnostic = context.Diagnostics.First(x => x.Id == NUnitToShouldlyConverterAnalyzerThat.DiagnosticId);
+            var diagnostic = context.Diagnostics.First(x => x.Id == NUnitToShouldlyConverterAnalyzer.DiagnosticId);
             var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
             var diagnosticSpan = diagnostic.Location.SourceSpan;
 
@@ -48,7 +48,6 @@ namespace Shouldly.FromAssert
 
                 var expectedValue = ((InvocationExpressionSyntax)invocation.ArgumentList.Arguments[1].Expression).ArgumentList.Arguments[0];
                 var underTest = invocation.ArgumentList.Arguments[0].Expression;
-
                 
                 var newExpression =  SyntaxFactory.ParseExpression($"{invocation.GetLeadingTrivia().ToFullString()}{underTest}.ShouldBe({expectedValue})");
                 var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
@@ -56,6 +55,36 @@ namespace Shouldly.FromAssert
                 return document.WithSyntaxRoot(newRoot);
             }
 
+            if (expression.Parent is InvocationExpressionSyntax invocation2 &&
+                invocation2.Expression is MemberAccessExpressionSyntax methodAccess2 &&
+                NUnitToShouldlyConverterAnalyzer.ListOfTwoParameterMethods.ContainsKey(methodAccess2.Name.Identifier.ValueText) &&
+                methodAccess2.Expression is IdentifierNameSyntax identifierName2 &&
+                identifierName2.Identifier.ValueText == "Assert" &&
+                invocation2.ArgumentList.Arguments.Count == 2)
+            {
+                var expected = invocation2.ArgumentList.Arguments[0].Expression;
+                var underTest = invocation2.ArgumentList.Arguments[1].Expression;
+                var should = NUnitToShouldlyConverterAnalyzer.ListOfTwoParameterMethods[methodAccess2.Name.Identifier.ValueText];
+                var newExpression = SyntaxFactory.ParseExpression($"{invocation2.GetLeadingTrivia().ToFullString()}{underTest}.{should}({expected})");
+                var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+                var newRoot = root.ReplaceNode(expression.Parent, newExpression);
+                return document.WithSyntaxRoot(newRoot);
+            }
+
+            if (expression.Parent is InvocationExpressionSyntax invocation1 &&
+                invocation1.Expression is MemberAccessExpressionSyntax methodAccess1 &&
+                NUnitToShouldlyConverterAnalyzer.ListOfSingleParameterMethods.ContainsKey(methodAccess1.Name.Identifier.ValueText) &&
+                methodAccess1.Expression is IdentifierNameSyntax identifierName1 &&
+                identifierName1.Identifier.ValueText == "Assert" &&
+                invocation1.ArgumentList.Arguments.Count == 1)
+            {
+                var underTest = invocation1.ArgumentList.Arguments[0].Expression;
+                var should = NUnitToShouldlyConverterAnalyzer.ListOfSingleParameterMethods[methodAccess1.Name.Identifier.ValueText];
+                var newExpression = SyntaxFactory.ParseExpression($"{invocation1.GetLeadingTrivia().ToFullString()}{underTest}.{should}()");
+                var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+                var newRoot = root.ReplaceNode(expression.Parent, newExpression);
+                return document.WithSyntaxRoot(newRoot);
+            }
             return document;
         }
     }

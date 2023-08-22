@@ -8,7 +8,7 @@ namespace Shouldly.FromAssert.Tests;
 
 public class NUnitToShouldlyConverterTestsTwoParameter
 {
-    private class CodeFixTest : CSharpCodeFixTest<NUnitToShouldlyConverterAnalyzerTwoParameter, NUnitAssertToShouldlyConverterCodeFixProviderTwoParameter, NUnitVerifier>
+    private class CodeFixTest : CSharpCodeFixTest<NUnitToShouldlyConverterAnalyzer, NUnitAssertToShouldlyConverterCodeFixProvider, NUnitVerifier>
     {
         public CodeFixTest(
             string source,
@@ -81,29 +81,29 @@ namespace TestNamespace
     }
 }";
         var codeFixTest = new CodeFixTest(test, expected,
-            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzerTwoParameter, NUnitVerifier>
-                .Diagnostic(NUnitToShouldlyConverterAnalyzerTwoParameter.Rule)
+            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
+                .Diagnostic(NUnitToShouldlyConverterAnalyzer.Rule)
                 .WithSpan(21, 13, 21, 64),
-            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzerTwoParameter, NUnitVerifier>
-                .Diagnostic(NUnitToShouldlyConverterAnalyzerTwoParameter.Rule)
+            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
+                .Diagnostic(NUnitToShouldlyConverterAnalyzer.Rule)
                 .WithSpan(14, 13, 14, 52),
-            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzerTwoParameter, NUnitVerifier>
-                .Diagnostic(NUnitToShouldlyConverterAnalyzerTwoParameter.Rule)
+            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
+                .Diagnostic(NUnitToShouldlyConverterAnalyzer.Rule)
                 .WithSpan(15, 13, 15, 55),
-            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzerTwoParameter, NUnitVerifier>
-                .Diagnostic(NUnitToShouldlyConverterAnalyzerTwoParameter.Rule)
+            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
+                .Diagnostic(NUnitToShouldlyConverterAnalyzer.Rule)
                 .WithSpan(16, 13, 16, 51),
-            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzerTwoParameter, NUnitVerifier>
-                .Diagnostic(NUnitToShouldlyConverterAnalyzerTwoParameter.Rule)
+            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
+                .Diagnostic(NUnitToShouldlyConverterAnalyzer.Rule)
                 .WithSpan(17, 13, 17, 54),
-            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzerTwoParameter, NUnitVerifier>
-                .Diagnostic(NUnitToShouldlyConverterAnalyzerTwoParameter.Rule)
+            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
+                .Diagnostic(NUnitToShouldlyConverterAnalyzer.Rule)
                 .WithSpan(18, 13, 18, 57),
-            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzerTwoParameter, NUnitVerifier>
-                .Diagnostic(NUnitToShouldlyConverterAnalyzerTwoParameter.Rule)
+            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
+                .Diagnostic(NUnitToShouldlyConverterAnalyzer.Rule)
                 .WithSpan(19, 13, 19, 60),
-            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzerTwoParameter, NUnitVerifier>
-                .Diagnostic(NUnitToShouldlyConverterAnalyzerTwoParameter.Rule)
+            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
+                .Diagnostic(NUnitToShouldlyConverterAnalyzer.Rule)
                 .WithSpan(20, 13, 20, 63));
 
         await codeFixTest.RunAsync(CancellationToken.None);
