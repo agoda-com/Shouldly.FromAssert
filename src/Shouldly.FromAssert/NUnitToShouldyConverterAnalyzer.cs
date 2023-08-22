@@ -63,7 +63,7 @@ namespace Shouldly.FromAssert
             }
 
             if (invocationExpression.Expression is MemberAccessExpressionSyntax memberAccessT &&
-                memberAccessT.Name.Identifier.ValueText == "Throws" &&
+                ListOfThrowsMethods.ContainsKey(memberAccessT.Name.Identifier.ValueText) &&
                 memberAccessT.Expression is IdentifierNameSyntax identifierNameT &&
                 identifierNameT.Identifier.ValueText == "Assert")
             {
@@ -89,6 +89,13 @@ namespace Shouldly.FromAssert
             {"IsInstanceOf", "ShouldBeOfType"},
             {"IsNotInstanceOf", "ShouldNotBeOfType"},
             {"IsAssignableFrom", "ShouldBeAssignableTo"}
+        };
+        internal static Dictionary<string, string> ListOfThrowsMethods = new Dictionary<string, string>()
+        {
+            {"Throws", "Throw"},
+            {"ThrowsAsync", "ThrowAsync"},
+            {"DoesNotThrow","NotThrow"},
+            {"DoesNotThrowAsync","NotThrowAsync"}
         };
     }
 }
