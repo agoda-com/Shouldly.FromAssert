@@ -1,6 +1,8 @@
 # Shouldly.FromAssert
 
-## Asserts completed
+Roslyn Code Fix library for migrating code from NUnit and XUnit assertions to Shouldly Shoulds.
+
+### Supports teh follow list of assertions 
 
 - Assert.That
 - Assert.True
@@ -20,26 +22,8 @@
 - Assert.IsInstanceOf
 - Assert.IsNotInstanceOf
 - Assert.IsAssignableFrom
-
-## Asserts TODO
-- Assert.Greater
-- Assert.GreaterOrEqual
-- Assert.Less
-- Assert.LessOrEqual
-- Assert.Positive
-- Assert.Negative
-- Assert.IsNotAssignableFrom
 - Assert.Throws
 - Assert.ThrowsAsync
 - Assert.DoesNotThrow
 - Assert.DoesNotThrowAsync
-- Assert.Catch
-- Assert.CatchAsync
-- Assert.Pass
-- Assert.Fail
-- Assert.Ignore
-- Assert.Inconclusive
-- String Assert
-- Collection Assert
-- File Assert
-- Directory Assert
+  
