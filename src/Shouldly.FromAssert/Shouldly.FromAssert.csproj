@@ -10,6 +10,15 @@
 		<GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
 		<GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
 	</PropertyGroup>
+	<PropertyGroup>
+		<Authors>Joel Dickson</Authors>
+		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/agoda-com/Shouldly.FromAssert</PackageProjectUrl>
+		<PackageIconUrl>https://raw.githubusercontent.com/agoda-com/AgodaAnalyzers/master/AgodaAnalyzersAgoji.png</PackageIconUrl>
+		<RepositoryUrl>https://github.com/agoda-com/Shouldly.FromAssert</RepositoryUrl>
+		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+		<Description>A set of code fixes to migrate code from NUnit Asserts to Shouldly Shoulds.</Description>
+	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4">
 			<PrivateAssets>all</PrivateAssets>
