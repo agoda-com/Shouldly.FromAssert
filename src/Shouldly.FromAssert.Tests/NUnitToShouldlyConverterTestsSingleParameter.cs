@@ -18,7 +18,6 @@ public class NUnitToShouldlyConverterTestsSingleParameter
             TestCode = source;
             FixedCode = fixedSource;
             ExpectedDiagnostics.AddRange(expected);
-
             ReferenceAssemblies = ReferenceAssemblies.Default
                 .AddPackages(ImmutableArray.Create(
                         new PackageIdentity("Shouldly", "4.2.1"),
