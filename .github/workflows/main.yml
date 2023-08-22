@@ -12,6 +12,7 @@ env:
   MAJOR_MINOR_VERSION: 1.1.
   SOLUTION_FILE: Shouldly.FromAssert.sln
 
+
 jobs:
   build:
     name: Build Package 
