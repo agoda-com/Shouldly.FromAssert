@@ -20,7 +20,11 @@
 - Assert.IsInstanceOf
 - Assert.IsNotInstanceOf
 - Assert.IsAssignableFrom
-
+- Assert.Throws
+- Assert.ThrowsAsync
+- Assert.DoesNotThrow
+- Assert.DoesNotThrowAsync
+  
 ## Asserts TODO
 - Assert.Greater
 - Assert.GreaterOrEqual
@@ -29,10 +33,6 @@
 - Assert.Positive
 - Assert.Negative
 - Assert.IsNotAssignableFrom
-- Assert.Throws
-- Assert.ThrowsAsync
-- Assert.DoesNotThrow
-- Assert.DoesNotThrowAsync
 - Assert.Catch
 - Assert.CatchAsync
 - Assert.Pass
