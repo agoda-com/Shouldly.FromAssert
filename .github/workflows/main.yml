@@ -39,7 +39,7 @@ jobs:
     - name: Run Unit Tests and Generate Coverage
       uses: glennawatson/coverlet-msbuild@v1
       with:
-        project-files: '**/*Test.csproj'
+        project-files: '**/*Tests.csproj'
         no-build: true  
         output-format: cobertura
         output: results
