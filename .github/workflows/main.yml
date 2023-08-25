@@ -64,7 +64,7 @@ jobs:
     - uses: codecov/codecov-action@v3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: src/Shouldly.FromAssert.Tests/results.net6.cobertura.xml  # optional
+        files: src/Shouldly.FromAssert.Tests/results.cobertura.xml  # optional
         fail_ci_if_error: true # optional (default = false)
 
   deploy:
