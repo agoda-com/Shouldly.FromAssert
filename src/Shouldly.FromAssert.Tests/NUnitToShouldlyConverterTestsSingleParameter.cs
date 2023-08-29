@@ -47,10 +47,12 @@ namespace TestNamespace
             Assert.Null(contestant);
             Assert.NotNull(contestant);
             Assert.IsEmpty(contestant);
+            Assert.IsTrue(true);
+            Assert.IsFalse(true);
         }
     }
 }";
-
+        
         var expected = @"
 using NUnit.Framework;
 using Shouldly;
@@ -68,6 +70,8 @@ namespace TestNamespace
             contestant.ShouldBeNull();
             contestant.ShouldNotBeNull();
             contestant.ShouldBeEmpty();
+            true.ShouldBeTrue();
+            true.ShouldBeFalse();
         }
     }
 }";
@@ -86,7 +90,13 @@ namespace TestNamespace
                 .WithSpan(16, 13, 16, 40),
             CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
                 .Diagnostic(NUnitToShouldlyConverterAnalyzer.Rule)
-                .WithSpan(17, 13, 17, 40));
+                .WithSpan(17, 13, 17, 40),
+            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
+                .Diagnostic(NUnitToShouldlyConverterAnalyzer.Rule)
+                .WithSpan(18, 13, 18, 33),
+            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
+                .Diagnostic(NUnitToShouldlyConverterAnalyzer.Rule)
+                .WithSpan(19, 13, 19, 34));
         
         await codeFixTest.RunAsync(CancellationToken.None);
     }

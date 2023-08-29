@@ -75,6 +75,8 @@ namespace Shouldly.FromAssert
         {
             {"True","ShouldBeTrue"},
             {"False","ShouldBeFalse"},
+            {"IsTrue","ShouldBeTrue"},
+            {"IsFalse","ShouldBeFalse"},
             {"Null","ShouldBeNull"} ,
             {"NotNull","ShouldNotBeNull"},
             {"IsEmpty", "ShouldBeEmpty"}
