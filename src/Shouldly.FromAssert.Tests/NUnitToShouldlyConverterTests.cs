@@ -40,7 +40,7 @@ namespace Shouldly.FromAssert.Tests
         {
             var test = @"
 using NUnit.Framework;
-
+using Shouldly;
 
 namespace TestNamespace
 {
@@ -86,6 +86,7 @@ namespace TestNamespace
             var test = @"
 using NUnit.Framework;
 using System;
+using Shouldly;
 
 namespace TestNamespace
 {
@@ -126,7 +127,7 @@ namespace TestNamespace
             var codeFixTest = new CodeFixTest(test, expected,
                 CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
                     .Diagnostic(NUnitToShouldlyConverterAnalyzer.DiagnosticId)
-                    .WithSpan(13, 13, 16, 16));
+                    .WithSpan(14, 13, 17, 16));
 
             await codeFixTest.RunAsync(CancellationToken.None);
             var a = codeFixTest.CompilerDiagnostics;

@@ -24,23 +24,24 @@ namespace Shouldly.FromAssert
         public override async Task RegisterCodeFixesAsync(CodeFixContext context)
         {
             var diagnostic = context.Diagnostics.First(x => x.Id == NUnitToShouldlyConverterAnalyzer.DiagnosticId);
-            var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-            var diagnosticSpan = diagnostic.Location.SourceSpan;
-
-            var expression = root.FindToken(diagnosticSpan.Start).Parent.AncestorsAndSelf().OfType<MemberAccessExpressionSyntax>().First();
-
             context.RegisterCodeFix(
                 CodeAction.Create(
                     title: Title,
-                    createChangedDocument: c => ConvertToShouldlyAsync(context.Document, expression, c),
+                    createChangedDocument: c => ConvertToShouldlyAsync(context, diagnostic, c),
                     equivalenceKey: Title),
                 diagnostic);
         }
 
-        private async Task<Document> ConvertToShouldlyAsync(Document document, MemberAccessExpressionSyntax expression, CancellationToken cancellationToken)
+        private async Task<Document> ConvertToShouldlyAsync(CodeFixContext context, Diagnostic diagnostic,
+            CancellationToken cancellationToken)
         {
-            var editor = await DocumentEditor.CreateAsync(document, cancellationToken);
+            var editor = await DocumentEditor.CreateAsync(context.Document, cancellationToken);
             var shouldyNamespace = SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("Shouldly"));
+
+            var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
+            var diagnosticSpan = diagnostic.Location.SourceSpan;
+
+            var expression = root.FindToken(diagnosticSpan.Start).Parent.AncestorsAndSelf().OfType<MemberAccessExpressionSyntax>().First();
 
             if (expression.Parent is InvocationExpressionSyntax invocation &&
                 invocation.Expression is MemberAccessExpressionSyntax methodAccess &&
@@ -52,7 +53,7 @@ namespace Shouldly.FromAssert
                 var expectedValue = ((InvocationExpressionSyntax)invocation.ArgumentList.Arguments[1].Expression).ArgumentList.Arguments[0];
                 var underTest = invocation.ArgumentList.Arguments[0].Expression;
 
-                var newExpression = SyntaxFactory.ParseExpression($"{underTest}.ShouldBe({expectedValue})");
+                var newExpression = SyntaxFactory.ParseExpression($"{invocation.GetLeadingTrivia().ToFullString()}{underTest}.ShouldBe({expectedValue})");
 
                 editor.ReplaceNode(expression.Parent, newExpression);
                 editor.AddUsingDirective(shouldyNamespace);
@@ -111,7 +112,7 @@ namespace Shouldly.FromAssert
 
                 return editor.GetChangedDocument();
             }
-            return document;
+            return context.Document;
         }
         
     }

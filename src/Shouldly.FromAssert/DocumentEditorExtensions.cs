@@ -20,7 +20,7 @@ namespace Shouldly.FromAssert
             if (compilationUnit != null)
             {
                 // Check if the using directive already exists.
-                var existingUsing = compilationUnit.Usings.FirstOrDefault(u => u.Name.ToString() == usingDirective.ToFullString());
+                var existingUsing = compilationUnit.Usings.FirstOrDefault(u => u.Name.ToString() == usingDirective.Name.ToString());
 
                 // Add the new using directive only if it doesn't exist already.
                 if (existingUsing == null)
