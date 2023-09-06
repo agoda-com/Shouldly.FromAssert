@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Editing;
 
 namespace Shouldly.FromAssert
 {
@@ -20,7 +21,6 @@ namespace Shouldly.FromAssert
         public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(NUnitToShouldlyConverterAnalyzer.DiagnosticId);
 
         public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
-
         public override async Task RegisterCodeFixesAsync(CodeFixContext context)
         {
             var diagnostic = context.Diagnostics.First(x => x.Id == NUnitToShouldlyConverterAnalyzer.DiagnosticId);
@@ -39,6 +39,7 @@ namespace Shouldly.FromAssert
 
         private async Task<Document> ConvertToShouldlyAsync(Document document, MemberAccessExpressionSyntax expression, CancellationToken cancellationToken)
         {
+            var editor = await DocumentEditor.CreateAsync(document, cancellationToken);
             var shouldyNamespace = SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("Shouldly"));
 
             if (expression.Parent is InvocationExpressionSyntax invocation &&
@@ -50,13 +51,13 @@ namespace Shouldly.FromAssert
             {
                 var expectedValue = ((InvocationExpressionSyntax)invocation.ArgumentList.Arguments[1].Expression).ArgumentList.Arguments[0];
                 var underTest = invocation.ArgumentList.Arguments[0].Expression;
-                
-                var newExpression =  SyntaxFactory.ParseExpression($"{invocation.GetLeadingTrivia().ToFullString()}{underTest}.ShouldBe({expectedValue})");
-                var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-                var newRoot = root.ReplaceNode(expression.Parent, newExpression);
-                var newDocument = document.WithSyntaxRoot(newRoot);
-                var newRootWithUsings = await AddUsingDirectiveAsync(newDocument, shouldyNamespace, cancellationToken);
-                return document.WithSyntaxRoot(newRootWithUsings);
+
+                var newExpression = SyntaxFactory.ParseExpression($"{underTest}.ShouldBe({expectedValue})");
+
+                editor.ReplaceNode(expression.Parent, newExpression);
+                editor.AddUsingDirective(shouldyNamespace);
+
+                return editor.GetChangedDocument();
             }
 
             if (expression.Parent is InvocationExpressionSyntax invocation2 &&
@@ -70,12 +71,11 @@ namespace Shouldly.FromAssert
                 var underTest = invocation2.ArgumentList.Arguments[1].Expression;
                 var should = NUnitToShouldlyConverterAnalyzer.ListOfTwoParameterMethods[methodAccess2.Name.Identifier.ValueText];
                 var newExpression = SyntaxFactory.ParseExpression($"{invocation2.GetLeadingTrivia().ToFullString()}{underTest}.{should}({expected})");
-                var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-                var newRoot = root.ReplaceNode(expression.Parent, newExpression);
 
-                var newDocument = document.WithSyntaxRoot(newRoot);
-                var newRootWithUsings = await AddUsingDirectiveAsync(newDocument, shouldyNamespace, cancellationToken);
-                return document.WithSyntaxRoot(newRootWithUsings);
+                editor.ReplaceNode(expression.Parent, newExpression);
+                editor.AddUsingDirective(shouldyNamespace);
+                
+                return editor.GetChangedDocument();
             }
 
             if (expression.Parent is InvocationExpressionSyntax invocation1 &&
@@ -88,12 +88,11 @@ namespace Shouldly.FromAssert
                 var underTest = invocation1.ArgumentList.Arguments[0].Expression;
                 var should = NUnitToShouldlyConverterAnalyzer.ListOfSingleParameterMethods[methodAccess1.Name.Identifier.ValueText];
                 var newExpression = SyntaxFactory.ParseExpression($"{invocation1.GetLeadingTrivia().ToFullString()}{underTest}.{should}()");
-                var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-                var newRoot = root.ReplaceNode(expression.Parent, newExpression);
 
-                var newDocument = document.WithSyntaxRoot(newRoot);
-                var newRootWithUsings = await AddUsingDirectiveAsync(newDocument, shouldyNamespace, cancellationToken);
-                return document.WithSyntaxRoot(newRootWithUsings);
+                editor.ReplaceNode(expression.Parent, newExpression);
+                editor.AddUsingDirective(shouldyNamespace);
+
+                return editor.GetChangedDocument();
             }
 
             if (expression.Parent is InvocationExpressionSyntax invocationT &&
@@ -106,29 +105,14 @@ namespace Shouldly.FromAssert
                 var genericName = ((GenericNameSyntax)methodAccessT.Name).TypeArgumentList.Arguments[0];
                 var thrower = NUnitToShouldlyConverterAnalyzer.ListOfThrowsMethods[methodAccessT.Name.Identifier.ValueText];
                 var newExpression = SyntaxFactory.ParseExpression($"{identifierNameT.GetLeadingTrivia().ToFullString()}Should.{thrower}<{genericName}>({underTest})");
-                var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-                var newRoot = root.ReplaceNode(expression.Parent, newExpression);
-                
-                var newDocument = document.WithSyntaxRoot(newRoot);
-                var newRootWithUsings = await AddUsingDirectiveAsync(newDocument, shouldyNamespace, cancellationToken);
-                return document.WithSyntaxRoot(newRootWithUsings);
-            }
 
+                editor.ReplaceNode(expression.Parent, newExpression);
+                editor.AddUsingDirective(shouldyNamespace);
+
+                return editor.GetChangedDocument();
+            }
             return document;
         }
-
-        private async Task<SyntaxNode> AddUsingDirectiveAsync(Document document, UsingDirectiveSyntax newUsingDirective, CancellationToken cancellationToken)
-        {
-            var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-            var existingUsings = root.DescendantNodes().OfType<UsingDirectiveSyntax>().ToList();
-
-            if (!existingUsings.Any(u => u.Name.ToString() == "Shouldly"))
-            {
-                var newRoot = ((CompilationUnitSyntax)root).AddUsings(newUsingDirective);
-                return newRoot;
-            }
-
-            return root;
-        }
+        
     }
 }
