@@ -12,6 +12,7 @@ env:
   MAJOR_MINOR_VERSION: 1.1.
   SOLUTION_FILE: Shouldly.FromAssert.sln
 
+
 jobs:
   build:
     name: Build Package 
@@ -38,7 +39,7 @@ jobs:
     - name: Run Unit Tests and Generate Coverage
       uses: glennawatson/coverlet-msbuild@v1
       with:
-        project-files: '**/*Test.csproj'
+        project-files: '**/*Tests.csproj'
         no-build: true  
         output-format: cobertura
         output: results
@@ -63,7 +64,7 @@ jobs:
     - uses: codecov/codecov-action@v3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: src/Shouldly.FromAssert.Tests/results.net6.cobertura.xml  # optional
+        files: src/Shouldly.FromAssert.Tests/results.cobertura.xml  # optional
         fail_ci_if_error: true # optional (default = false)
 
   deploy:
@@ -89,7 +90,7 @@ jobs:
           dotnet-version: ${{ env.NETCORE_VERSION }}
 
       - name: Push to NuGet
-        run: dotnet nuget push nupkg/**/*.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://nuget.org --skip-duplicate
+        run: dotnet nuget push nupkg/*.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://nuget.org --skip-duplicate
 
         
   release:
