@@ -25,7 +25,7 @@ namespace Shouldly.FromAssert.Tests
                 TestCode = source;
                 FixedCode = fixedSource;
                 ExpectedDiagnostics.AddRange(expected);
-                NumberOfFixAllIterations = 2;
+                
                 ReferenceAssemblies = ReferenceAssemblies.Default
                     .AddPackages(ImmutableArray.Create(
                             new PackageIdentity("Shouldly", "4.2.1"),
