@@ -97,7 +97,52 @@ namespace TestNamespace
             CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
                 .Diagnostic(NUnitToShouldlyConverterAnalyzer.Rule)
                 .WithSpan(19, 13, 19, 34));
-        
+
+        await codeFixTest.RunAsync(CancellationToken.None);
+    }
+
+
+    [Test]
+    public async Task TestConversion2()
+    {
+        var test = @"
+using NUnit.Framework;
+using Shouldly;
+
+namespace TestNamespace
+{
+    public class TestClass
+    {
+        [Test]
+        public void TestMethod()
+        {
+            int i = 0;
+            Assert.IsTrue(i == 0);
+        }
+    }
+}";
+
+        var expected = @"
+using NUnit.Framework;
+using Shouldly;
+
+namespace TestNamespace
+{
+    public class TestClass
+    {
+        [Test]
+        public void TestMethod()
+        {
+            int i = 0;
+            (i == 0).ShouldBeTrue();
+        }
+    }
+}";
+        var codeFixTest = new CodeFixTest(test, expected,
+            CSharpAnalyzerVerifier<NUnitToShouldlyConverterAnalyzer, NUnitVerifier>
+                .Diagnostic(NUnitToShouldlyConverterAnalyzer.Rule)
+                .WithSpan(13, 13, 13, 35));
+
         await codeFixTest.RunAsync(CancellationToken.None);
     }
 }

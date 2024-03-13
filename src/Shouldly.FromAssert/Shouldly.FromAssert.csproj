@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
 	<PropertyGroup>
 		<TargetFrameworks>netstandard2.1</TargetFrameworks>
 		<GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
@@ -10,7 +9,7 @@
 		<GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
 		<GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
 		<IncludeBuildOutput>false</IncludeBuildOutput>
-    		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 	</PropertyGroup>
 	<PropertyGroup>
@@ -22,20 +21,19 @@
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<Description>A set of code fixes to migrate code from NUnit Asserts to Shouldly Shoulds.</Description>
 	</PropertyGroup>
-<ItemGroup>
-		<None Include="bin\Release\netstandard2.1\Shouldly.FromAssert.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
-		<None Include="bin\Release\netstandard2.1\**\Shouldly.FromAssert.resources.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
-		<None Include="bin\Release\netstandard2.1\Shouldly.FromAssert.pdb" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
-		
+	<ItemGroup>
+		<None Include="bin\$(Configuration)\netstandard2.1\Shouldly.FromAssert.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
+		<None Include="bin\$(Configuration)\netstandard2.1\**\Shouldly.FromAssert.resources.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
+		<None Include="bin\$(Configuration)\netstandard2.1\Shouldly.FromAssert.pdb" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
 	</ItemGroup>
-<ItemGroup>
- <None Include="tools\install.ps1">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="tools\uninstall.ps1">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-</ItemGroup>
+	<ItemGroup>
+		<None Include="tools\install.ps1">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+		<None Include="tools\uninstall.ps1">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4">
 			<PrivateAssets>all</PrivateAssets>
