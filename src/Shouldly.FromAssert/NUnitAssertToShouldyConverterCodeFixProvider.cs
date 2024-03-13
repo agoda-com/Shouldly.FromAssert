@@ -36,7 +36,7 @@ namespace Shouldly.FromAssert
             CancellationToken cancellationToken)
         {
             var editor = await DocumentEditor.CreateAsync(context.Document, cancellationToken);
-            var shouldyNamespace = SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("Shouldly"));
+            //var shouldyNamespace = SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("Shouldly"));
 
             var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
             var diagnosticSpan = diagnostic.Location.SourceSpan;
@@ -56,7 +56,7 @@ namespace Shouldly.FromAssert
                 var newExpression = SyntaxFactory.ParseExpression($"{invocation.GetLeadingTrivia().ToFullString()}{underTest}.ShouldBe({expectedValue})");
 
                 editor.ReplaceNode(expression.Parent, newExpression);
-                editor.AddUsingDirective(shouldyNamespace);
+                //editor.AddUsingDirective(shouldyNamespace);
 
                 return editor.GetChangedDocument();
             }
@@ -74,7 +74,7 @@ namespace Shouldly.FromAssert
                 var newExpression = SyntaxFactory.ParseExpression($"{invocation2.GetLeadingTrivia().ToFullString()}{underTest}.{should}({expected})");
 
                 editor.ReplaceNode(expression.Parent, newExpression);
-                editor.AddUsingDirective(shouldyNamespace);
+                //editor.AddUsingDirective(shouldyNamespace);
                 
                 return editor.GetChangedDocument();
             }
@@ -87,11 +87,13 @@ namespace Shouldly.FromAssert
                 invocation1.ArgumentList.Arguments.Count == 1)
             {
                 var underTest = invocation1.ArgumentList.Arguments[0].Expression;
+                
                 var should = NUnitToShouldlyConverterAnalyzer.ListOfSingleParameterMethods[methodAccess1.Name.Identifier.ValueText];
-                var newExpression = SyntaxFactory.ParseExpression($"{invocation1.GetLeadingTrivia().ToFullString()}{underTest}.{should}()");
+                var str = ContainsOperator(underTest) ? "(" + underTest + ")" : underTest.ToString();
+                var newExpression = SyntaxFactory.ParseExpression($"{invocation1.GetLeadingTrivia().ToFullString()}{str}.{should}()");
 
                 editor.ReplaceNode(expression.Parent, newExpression);
-                editor.AddUsingDirective(shouldyNamespace);
+                //editor.AddUsingDirective(shouldyNamespace);
 
                 return editor.GetChangedDocument();
             }
@@ -108,12 +110,26 @@ namespace Shouldly.FromAssert
                 var newExpression = SyntaxFactory.ParseExpression($"{identifierNameT.GetLeadingTrivia().ToFullString()}Should.{thrower}<{genericName}>({underTest})");
 
                 editor.ReplaceNode(expression.Parent, newExpression);
-                editor.AddUsingDirective(shouldyNamespace);
+                //editor.AddUsingDirective(shouldyNamespace);
 
                 return editor.GetChangedDocument();
             }
             return context.Document;
         }
-        
+
+        private bool ContainsOperator(ExpressionSyntax expression)
+        {
+            switch (expression)
+            {
+                case BinaryExpressionSyntax _:
+                case PrefixUnaryExpressionSyntax _:
+                case PostfixUnaryExpressionSyntax _:
+                case AssignmentExpressionSyntax _:
+                case ConditionalExpressionSyntax _:
+                    return true;
+                default:
+                    return false;
+            }
+        }
     }
 }
