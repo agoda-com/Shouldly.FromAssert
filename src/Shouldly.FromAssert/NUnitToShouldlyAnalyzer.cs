@@ -17,7 +17,8 @@ namespace Shouldly.FromAssert
             "Convert to Shouldly format",
             "NUnit to Shouldly",
             DiagnosticSeverity.Warning,
-            true);
+            true,
+            helpLinkUri: "https://github.com/agoda-com/Shouldly.FromAssert/");
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 

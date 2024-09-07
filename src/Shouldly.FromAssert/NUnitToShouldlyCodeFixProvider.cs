@@ -14,7 +14,7 @@ namespace Shouldly.FromAssert
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NUnitToShouldlyCodeFixProvider)), Shared]
     public class NUnitToShouldlyCodeFixProvider : CodeFixProvider
     {
-        private const string Title = "Convert to Shouldly assertion";
+        private const string Title = "Convert to Shouldly";
 
         public sealed override ImmutableArray<string> FixableDiagnosticIds =>
             ImmutableArray.Create(NUnitToShouldlyAnalyzer.DiagnosticId);
@@ -24,23 +24,29 @@ namespace Shouldly.FromAssert
         public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
         {
             var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-            var diagnostic = context.Diagnostics.First(x => x.Id == NUnitToShouldlyAnalyzer.DiagnosticId);
-            var diagnosticSpan = diagnostic.Location.SourceSpan;
-            var invocation = root.FindNode(diagnosticSpan) as InvocationExpressionSyntax;
-            //if (invocation == null) return;
 
-            context.RegisterCodeFix(
-                CodeAction.Create(
-                    title: Title,
-                    createChangedDocument: c => ConvertToShouldlyAsync(context.Document, invocation, c),
-                    equivalenceKey: Title),
-                diagnostic);
+            foreach (var diagnostic in context.Diagnostics)
+            {
+                if (diagnostic.Id != NUnitToShouldlyAnalyzer.DiagnosticId) continue;
+
+                context.RegisterCodeFix(
+                    CodeAction.Create(
+                        title: Title,
+                        createChangedDocument: c => ConvertToShouldlyAsync(context.Document, diagnostic, c),
+                        equivalenceKey: Title),
+                    diagnostic);
+            }
         }
 
-        private async Task<Document> ConvertToShouldlyAsync(Document document, InvocationExpressionSyntax invocation,
-            CancellationToken cancellationToken)
+
+        private async Task<Document> ConvertToShouldlyAsync(Document document, Diagnostic diagnostic, CancellationToken cancellationToken)
         {
             var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+            var diagnosticSpan = diagnostic.Location.SourceSpan;
+            var invocation = root.FindNode(diagnosticSpan) as InvocationExpressionSyntax;
+
+            if (invocation == null) return document;
+
             var newInvocation = ConvertToShouldly(invocation);
 
             if (newInvocation != null)
