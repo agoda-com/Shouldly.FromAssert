@@ -31,25 +31,24 @@ namespace Shouldly.FromAssert
 
         private static void AnalyzeNode(SyntaxNodeAnalysisContext context)
         {
-            var invocation = (InvocationExpressionSyntax) context.Node;
-            var methodName = invocation.Expression switch
+            var invocation = (InvocationExpressionSyntax)context.Node;
+            string methodName = null;
+            string assertClass = null;
+
+            if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
             {
-                MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
-                IdentifierNameSyntax identifier => identifier.Identifier.Text,
-                _ => null
-            };
+                methodName = memberAccess.Name.Identifier.Text;
+                if (memberAccess.Expression is IdentifierNameSyntax identifier)
+                {
+                    assertClass = identifier.Identifier.Text;
+                }
+            }
+            else if (invocation.Expression is IdentifierNameSyntax identifierName)
+            {
+                methodName = identifierName.Identifier.Text;
+            }
 
             if (methodName == null) return;
-
-            var assertClass = invocation.Expression switch
-            {
-                MemberAccessExpressionSyntax memberAccess => memberAccess.Expression switch
-                {
-                    IdentifierNameSyntax identifier => identifier.Identifier.Text,
-                    _ => null
-                },
-                _ => null
-            };
 
             if (assertClass == "Assert" || assertClass == "StringAssert" || assertClass == "CollectionAssert" ||
                 (assertClass == null && methodName.StartsWith("Assert")))

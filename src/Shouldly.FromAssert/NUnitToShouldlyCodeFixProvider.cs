@@ -60,24 +60,26 @@ namespace Shouldly.FromAssert
 
         private ExpressionSyntax ConvertToShouldly(InvocationExpressionSyntax invocation)
         {
-            var methodName = invocation.Expression switch
+            string methodName = null;
+            if (invocation.Expression is MemberAccessExpressionSyntax memberAccessExpSyn)
             {
-                MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
-                IdentifierNameSyntax identifier => identifier.Identifier.Text,
-                _ => null
-            };
+                methodName = memberAccessExpSyn.Name.Identifier.Text;
+            }
+            else if (invocation.Expression is IdentifierNameSyntax identifier)
+            {
+                methodName = identifier.Identifier.Text;
+            }
 
             if (methodName == null) return null;
 
-            var assertClass = invocation.Expression switch
+            string assertClass = null;
+            if (invocation.Expression is MemberAccessExpressionSyntax memberAccessForClass)
             {
-                MemberAccessExpressionSyntax memberAccess => memberAccess.Expression switch
+                if (memberAccessForClass.Expression is IdentifierNameSyntax identifierForClass)
                 {
-                    IdentifierNameSyntax identifier => identifier.Identifier.Text,
-                    _ => null
-                },
-                _ => null
-            };
+                    assertClass = identifierForClass.Identifier.Text;
+                }
+            }
 
             var arguments = invocation.ArgumentList.Arguments;
 
