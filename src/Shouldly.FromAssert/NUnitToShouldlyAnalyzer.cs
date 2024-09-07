@@ -8,7 +8,6 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Shouldly.FromAssert
 {
-
     namespace NUnitToShouldlyConverter
     {
         [DiagnosticAnalyzer(LanguageNames.CSharp)]
