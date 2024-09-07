@@ -7,8 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Shouldly.FromAssert", "Shou
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Shouldly.FromAssert.Tests", "Shouldly.FromAssert.Tests\Shouldly.FromAssert.Tests.csproj", "{79FB1AC6-5159-4F72-8603-9D17BE600097}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shouldly.FromAssert.Vsix", "Shouldly.FromAssert.Vsix\Shouldly.FromAssert.Vsix.csproj", "{985F8348-378C-4F5A-80FF-82565C0E5A45}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
