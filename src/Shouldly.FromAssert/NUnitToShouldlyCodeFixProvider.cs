@@ -19,10 +19,7 @@ namespace Shouldly.FromAssert
         public sealed override ImmutableArray<string> FixableDiagnosticIds =>
             ImmutableArray.Create(NUnitToShouldlyAnalyzer.DiagnosticId);
 
-        public sealed override FixAllProvider GetFixAllProvider()
-        {
-            return WellKnownFixAllProviders.BatchFixer;
-        }
+        public sealed override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
         public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
         {
@@ -30,7 +27,7 @@ namespace Shouldly.FromAssert
             var diagnostic = context.Diagnostics.First(x => x.Id == NUnitToShouldlyAnalyzer.DiagnosticId);
             var diagnosticSpan = diagnostic.Location.SourceSpan;
             var invocation = root.FindNode(diagnosticSpan) as InvocationExpressionSyntax;
-            if (invocation == null) return;
+            //if (invocation == null) return;
 
             context.RegisterCodeFix(
                 CodeAction.Create(
