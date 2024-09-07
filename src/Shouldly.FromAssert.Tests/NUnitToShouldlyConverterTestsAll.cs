@@ -1,47 +1,13 @@
-﻿using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Collections.Immutable;
 using Microsoft.CodeAnalysis.CSharp.Testing;
-using Microsoft.CodeAnalysis.Testing.Verifiers;
 using Microsoft.CodeAnalysis.Testing;
+using Microsoft.CodeAnalysis.Testing.Verifiers;
 using NUnit.Framework;
-using System.Collections.Immutable;
-using Shouldly.FromAssert.NUnitToShouldlyConverter;
 
 namespace Shouldly.FromAssert.Tests;
 
 public class NUnitToShouldlyConverterTestsAll
 {
-
-    private class CodeFixTest : CSharpCodeFixTest<NUnitToShouldlyAnalyzer, NUnitToShouldlyCodeFixProvider, NUnitVerifier>
-    {
-        public CodeFixTest(
-            string source,
-            string fixedSource,
-            params DiagnosticResult[] expected)
-        {
-            TestCode = source;
-            FixedCode = fixedSource;
-            ExpectedDiagnostics.AddRange(expected);
-
-            ReferenceAssemblies = ReferenceAssemblies.Default
-                .AddPackages(ImmutableArray.Create(
-                        new PackageIdentity("Shouldly", "4.2.1"),
-                        new PackageIdentity("NUnit", "3.14.0")
-                    )
-                );
-        }
-    }
-    public class TestCase
-    {
-        public string NUnitAssertion { get; set; }
-        public string ShouldlyAssertion { get; set; }
-        public int Line { get; set; }
-        public int StartColumn { get; set; }
-        public int EndColumn { get; set; }
-        public string SetupCode { get; set; }
-
-    }
     private static IEnumerable<TestCaseData> TestCases()
     {
         yield return new TestCaseData(new TestCase
@@ -243,7 +209,7 @@ public class NUnitToShouldlyConverterTestsAll
             StartColumn = 13,
             EndColumn = 37
         }).SetName("Assert.IsNaN");
-        
+
         yield return new TestCaseData(new TestCase
         {
             SetupCode = "var greeting = \"Hello, World!\";",
@@ -471,5 +437,36 @@ namespace TestNamespace
         var compilerDiagnostics = codeFixTest.CompilerDiagnostics;
 
         // Add any additional assertions here if needed
+    }
+
+    private class
+        CodeFixTest : CSharpCodeFixTest<NUnitToShouldlyAnalyzer, NUnitToShouldlyCodeFixProvider, NUnitVerifier>
+    {
+        public CodeFixTest(
+            string source,
+            string fixedSource,
+            params DiagnosticResult[] expected)
+        {
+            TestCode = source;
+            FixedCode = fixedSource;
+            ExpectedDiagnostics.AddRange(expected);
+
+            ReferenceAssemblies = ReferenceAssemblies.Default
+                .AddPackages(ImmutableArray.Create(
+                        new PackageIdentity("Shouldly", "4.2.1"),
+                        new PackageIdentity("NUnit", "3.14.0")
+                    )
+                );
+        }
+    }
+
+    public class TestCase
+    {
+        public string NUnitAssertion { get; set; }
+        public string ShouldlyAssertion { get; set; }
+        public int Line { get; set; }
+        public int StartColumn { get; set; }
+        public int EndColumn { get; set; }
+        public string SetupCode { get; set; }
     }
 }

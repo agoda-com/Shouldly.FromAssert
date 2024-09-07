@@ -9,17 +9,15 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Shouldly.FromAssert.NUnitToShouldlyConverter
+namespace Shouldly.FromAssert
 {
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NUnitToShouldlyCodeFixProvider)), Shared]
     public class NUnitToShouldlyCodeFixProvider : CodeFixProvider
     {
         private const string Title = "Convert to Shouldly assertion";
 
-        public sealed override ImmutableArray<string> FixableDiagnosticIds
-        {
-            get { return ImmutableArray.Create(NUnitToShouldlyAnalyzer.DiagnosticId); }
-        }
+        public sealed override ImmutableArray<string> FixableDiagnosticIds =>
+            ImmutableArray.Create(NUnitToShouldlyAnalyzer.DiagnosticId);
 
         public sealed override FixAllProvider GetFixAllProvider()
         {
@@ -29,9 +27,8 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
         public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
         {
             var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-            var diagnostic = context.Diagnostics.First();
+            var diagnostic = context.Diagnostics.First(x => x.Id == NUnitToShouldlyAnalyzer.DiagnosticId);
             var diagnosticSpan = diagnostic.Location.SourceSpan;
-
             var invocation = root.FindNode(diagnosticSpan) as InvocationExpressionSyntax;
             if (invocation == null) return;
 
@@ -43,7 +40,8 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
                 diagnostic);
         }
 
-        private async Task<Document> ConvertToShouldlyAsync(Document document, InvocationExpressionSyntax invocation, CancellationToken cancellationToken)
+        private async Task<Document> ConvertToShouldlyAsync(Document document, InvocationExpressionSyntax invocation,
+            CancellationToken cancellationToken)
         {
             var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
             var newInvocation = ConvertToShouldly(invocation);
@@ -86,11 +84,11 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
-                                arguments[0].Expression,  
+                                arguments[0].Expression,
                                 SyntaxFactory.IdentifierName("ShouldNotContain")),
                             SyntaxFactory.ArgumentList(
                                 SyntaxFactory.SingletonSeparatedList(
-                                    SyntaxFactory.Argument(arguments[1].Expression)  
+                                    SyntaxFactory.Argument(arguments[1].Expression)
                                 )
                             )
                         )
@@ -113,14 +111,16 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
                                 SyntaxFactory.IdentifierName("ShouldBe")),
                             SyntaxFactory.ArgumentList(
                                 SyntaxFactory.SeparatedList<ArgumentSyntax>(
-                                    new SyntaxNodeOrToken[] {
+                                    new SyntaxNodeOrToken[]
+                                    {
                                         arguments[0],
                                         SyntaxFactory.Token(SyntaxKind.CommaToken),
                                         SyntaxFactory.Argument(
                                             SyntaxFactory.NameColon("ignoreOrder"),
                                             SyntaxFactory.Token(SyntaxKind.None),
                                             SyntaxFactory.LiteralExpression(
-                                                SyntaxKind.TrueLiteralExpression))})))
+                                                SyntaxKind.TrueLiteralExpression))
+                                    })))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "AllItemsAreInstancesOfType" when assertClass == "CollectionAssert":
@@ -138,7 +138,7 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
                                             SyntaxFactory.BinaryExpression(
                                                 SyntaxKind.IsExpression,
                                                 SyntaxFactory.IdentifierName("item"),
-                                                ((TypeOfExpressionSyntax)arguments[1].Expression).Type))))))
+                                                ((TypeOfExpressionSyntax) arguments[1].Expression).Type))))))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia())
                         .WithTrailingTrivia(invocation.GetTrailingTrivia());
 
@@ -235,16 +235,14 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
                                 SyntaxFactory.ArgumentList())
                             .WithLeadingTrivia(invocation.GetLeadingTrivia());
                     }
-                    else
-                    {
-                        return SyntaxFactory.InvocationExpression(
-                                SyntaxFactory.MemberAccessExpression(
-                                    SyntaxKind.SimpleMemberAccessExpression,
-                                    arguments[0].Expression,
-                                    SyntaxFactory.IdentifierName("ShouldBeTrue")),
-                                SyntaxFactory.ArgumentList())
-                            .WithLeadingTrivia(invocation.GetLeadingTrivia());
-                    }
+
+                    return SyntaxFactory.InvocationExpression(
+                            SyntaxFactory.MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                arguments[0].Expression,
+                                SyntaxFactory.IdentifierName("ShouldBeTrue")),
+                            SyntaxFactory.ArgumentList())
+                        .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "IsFalse" when assertClass == "Assert":
                     if (arguments[0].Expression is BinaryExpressionSyntax binaryExpression)
@@ -257,16 +255,14 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
                                 SyntaxFactory.ArgumentList())
                             .WithLeadingTrivia(invocation.GetLeadingTrivia());
                     }
-                    else
-                    {
-                        return SyntaxFactory.InvocationExpression(
-                                SyntaxFactory.MemberAccessExpression(
-                                    SyntaxKind.SimpleMemberAccessExpression,
-                                    arguments[0].Expression,
-                                    SyntaxFactory.IdentifierName("ShouldBeFalse")),
-                                SyntaxFactory.ArgumentList())
-                            .WithLeadingTrivia(invocation.GetLeadingTrivia());
-                    }
+
+                    return SyntaxFactory.InvocationExpression(
+                            SyntaxFactory.MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                arguments[0].Expression,
+                                SyntaxFactory.IdentifierName("ShouldBeFalse")),
+                            SyntaxFactory.ArgumentList())
+                        .WithLeadingTrivia(invocation.GetLeadingTrivia());
                 case "AreSame":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
@@ -299,9 +295,11 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
                                 SyntaxFactory.ArgumentList())
                             .WithLeadingTrivia(invocation.GetLeadingTrivia());
                     }
+
                     break;
                 case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "TypeOf":
+                                 inv.Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "TypeOf":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -309,8 +307,9 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
                                 SyntaxFactory.GenericName(SyntaxFactory.Identifier("ShouldBeOfType"))
                                     .WithTypeArgumentList(
                                         SyntaxFactory.TypeArgumentList(
-                                            SyntaxFactory.SingletonSeparatedList<TypeSyntax>(
-                                                ((TypeOfExpressionSyntax)inv.ArgumentList.Arguments[0].Expression).Type)))),
+                                            SyntaxFactory.SingletonSeparatedList(
+                                                ((TypeOfExpressionSyntax) inv.ArgumentList.Arguments[0].Expression)
+                                                .Type)))),
                             SyntaxFactory.ArgumentList())
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
                 case "IsNotInstanceOf" when assertClass == "Assert":
@@ -327,11 +326,14 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
                                 SyntaxFactory.ArgumentList())
                             .WithLeadingTrivia(invocation.GetLeadingTrivia());
                     }
+
                     break;
 
                 case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "Not" &&
-                                 ma.Expression is MemberAccessExpressionSyntax innerMa && innerMa.Name.Identifier.Text == "TypeOf":
+                                 inv.Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "Not" &&
+                                 ma.Expression is MemberAccessExpressionSyntax innerMa &&
+                                 innerMa.Name.Identifier.Text == "TypeOf":
                     if (inv.ArgumentList.Arguments.Count > 0 &&
                         inv.ArgumentList.Arguments[0].Expression is TypeOfExpressionSyntax typeOfExpr)
                     {
@@ -343,14 +345,16 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
                                             SyntaxFactory.Identifier("ShouldNotBeOfType"))
                                         .WithTypeArgumentList(
                                             SyntaxFactory.TypeArgumentList(
-                                                SyntaxFactory.SingletonSeparatedList<TypeSyntax>(typeOfExpr.Type)))),
+                                                SyntaxFactory.SingletonSeparatedList(typeOfExpr.Type)))),
                                 SyntaxFactory.ArgumentList())
                             .WithLeadingTrivia(invocation.GetLeadingTrivia());
                     }
+
                     break;
                 case "Contains" when assertClass == "StringAssert":
                 case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "Contains":
+                                 inv.Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "Contains":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -361,7 +365,8 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
 
                 case "Contains":
                 case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "Contains":
+                                 inv.Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "Contains":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -372,8 +377,10 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
 
                 case "DoesNotContain":
                 case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "Not" &&
-                                 ma.Expression is MemberAccessExpressionSyntax innerMa && innerMa.Name.Identifier.Text == "Contains":
+                                 inv.Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "Not" &&
+                                 ma.Expression is MemberAccessExpressionSyntax innerMa &&
+                                 innerMa.Name.Identifier.Text == "Contains":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -487,7 +494,8 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
                 case "Greater":
                 case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "GreaterThan":
+                                 inv.Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "GreaterThan":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -498,7 +506,8 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
 
                 case "GreaterOrEqual":
                 case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "GreaterThanOrEqualTo":
+                                 inv.Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "GreaterThanOrEqualTo":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -509,7 +518,8 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
 
                 case "Less":
                 case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "LessThan":
+                                 inv.Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "LessThan":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -520,7 +530,8 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
 
                 case "LessOrEqual":
                 case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "LessThanOrEqualTo":
+                                 inv.Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "LessThanOrEqualTo":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -548,7 +559,8 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
 
                 case "StartsWith" when assertClass == "StringAssert":
                 case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "StartsWith":
+                                 inv.Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "StartsWith":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -559,7 +571,8 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
 
                 case "EndsWith" when assertClass == "StringAssert":
                 case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "EndsWith":
+                                 inv.Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "EndsWith":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -579,7 +592,10 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
                                     .WithTypeArgumentList(
                                         SyntaxFactory.TypeArgumentList(
                                             SyntaxFactory.SingletonSeparatedList<TypeSyntax>(
-                                                SyntaxFactory.IdentifierName(((GenericNameSyntax)((MemberAccessExpressionSyntax)invocation.Expression).Name).TypeArgumentList.Arguments.First().ToFullString()))))),
+                                                SyntaxFactory.IdentifierName(
+                                                    ((GenericNameSyntax) ((MemberAccessExpressionSyntax) invocation
+                                                        .Expression).Name).TypeArgumentList.Arguments.First()
+                                                    .ToFullString()))))),
                             SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(arguments[0])))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia())
                         .WithTrailingTrivia(invocation.GetTrailingTrivia());
@@ -623,36 +639,43 @@ namespace Shouldly.FromAssert.NUnitToShouldlyConverter
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "StringContaining":
+                                 inv.Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "StringContaining":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 arguments[0].Expression,
                                 SyntaxFactory.IdentifierName("ShouldContain")),
-                            SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(inv.ArgumentList.Arguments[0])))
+                            SyntaxFactory.ArgumentList(
+                                SyntaxFactory.SingletonSeparatedList(inv.ArgumentList.Arguments[0])))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "StringStarting":
+                                 inv.Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "StringStarting":
                     return SyntaxFactory.InvocationExpression(
                         SyntaxFactory.MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
                             arguments[0].Expression,
                             SyntaxFactory.IdentifierName("ShouldStartWith")),
-                        SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(inv.ArgumentList.Arguments[0])));
+                        SyntaxFactory.ArgumentList(
+                            SyntaxFactory.SingletonSeparatedList(inv.ArgumentList.Arguments[0])));
 
                 case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "StringEnding":
+                                 inv.Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "StringEnding":
                     return SyntaxFactory.InvocationExpression(
                         SyntaxFactory.MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
                             arguments[0].Expression,
                             SyntaxFactory.IdentifierName("ShouldEndWith")),
-                        SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(inv.ArgumentList.Arguments[0])));
+                        SyntaxFactory.ArgumentList(
+                            SyntaxFactory.SingletonSeparatedList(inv.ArgumentList.Arguments[0])));
 
                 default:
                     return null;
             }
+
             return null;
         }
     }
