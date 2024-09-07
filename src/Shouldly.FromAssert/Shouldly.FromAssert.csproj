@@ -22,9 +22,9 @@
 		<Description>A set of code fixes to migrate code from NUnit Asserts to Shouldly Shoulds.</Description>
 	</PropertyGroup>
 	<ItemGroup>
-		<None Include="bin\$(Configuration)\netstandard2.1\Shouldly.FromAssert.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
-		<None Include="bin\$(Configuration)\netstandard2.1\**\Shouldly.FromAssert.resources.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
-		<None Include="bin\$(Configuration)\netstandard2.1\Shouldly.FromAssert.pdb" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
+		<None Include="bin\$(Configuration)\netstandard2.0\Shouldly.FromAssert.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
+		<None Include="bin\$(Configuration)\netstandard2.0\**\Shouldly.FromAssert.resources.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
+		<None Include="bin\$(Configuration)\netstandard2.0\Shouldly.FromAssert.pdb" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Include="tools\install.ps1">
