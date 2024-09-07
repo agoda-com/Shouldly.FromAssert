@@ -10,7 +10,7 @@ namespace Shouldly.FromAssert
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class NUnitToShouldlyConverterAnalyzer : DiagnosticAnalyzer
     {
-        public const string DiagnosticId = "SHU001";
+        public const string DiagnosticId = "SHU001a";
 
         public static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
             DiagnosticId,
