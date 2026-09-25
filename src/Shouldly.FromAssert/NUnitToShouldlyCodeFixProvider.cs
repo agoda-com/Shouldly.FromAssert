@@ -47,7 +47,8 @@ namespace Shouldly.FromAssert
 
             if (invocation == null) return document;
 
-            var newInvocation = ConvertToShouldly(invocation);
+            var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+            var newInvocation = ConvertToShouldly(invocation, semanticModel);
 
             if (newInvocation != null)
             {
@@ -58,7 +59,7 @@ namespace Shouldly.FromAssert
             return document;
         }
 
-        private ExpressionSyntax ConvertToShouldly(InvocationExpressionSyntax invocation)
+        private ExpressionSyntax ConvertToShouldly(InvocationExpressionSyntax invocation, SemanticModel semanticModel)
         {
             string methodName = null;
             if (invocation.Expression is MemberAccessExpressionSyntax memberAccessExpSyn)
@@ -365,7 +366,7 @@ namespace Shouldly.FromAssert
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 arguments[1].Expression,
                                 SyntaxFactory.IdentifierName("ShouldContain")),
-                            SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(arguments[0])))
+                            ContainArgumentList(arguments[1].Expression, arguments[0], semanticModel))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "Contains":
@@ -391,7 +392,7 @@ namespace Shouldly.FromAssert
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 arguments[1].Expression,
                                 SyntaxFactory.IdentifierName("ShouldNotContain")),
-                            SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(arguments[0])))
+                            ContainArgumentList(arguments[1].Expression, arguments[0], semanticModel))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
                 case "That" when assertClass == "Assert" &&
                                  arguments.Count == 2 &&
@@ -405,9 +406,7 @@ namespace Shouldly.FromAssert
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 arguments[0].Expression,
                                 SyntaxFactory.IdentifierName("ShouldContain")),
-                            SyntaxFactory.ArgumentList(
-                                SyntaxFactory.SingletonSeparatedList(
-                                    inv.ArgumentList.Arguments[0])))
+                            ContainArgumentList(arguments[0].Expression, inv.ArgumentList.Arguments[0], semanticModel))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
                 case "That" when assertClass == "Assert" &&
                                  arguments.Count == 2 &&
@@ -682,6 +681,28 @@ namespace Shouldly.FromAssert
             }
 
             return null;
+        }
+
+        // NUnit's string containment is case-sensitive, but Shouldly's string ShouldContain/ShouldNotContain
+        // default to Case.Insensitive. The collection overloads have no Case parameter, so only add it
+        // when the receiver is a string.
+        private static ArgumentListSyntax ContainArgumentList(ExpressionSyntax receiver, ArgumentSyntax expected, SemanticModel semanticModel)
+        {
+            if (semanticModel?.GetTypeInfo(receiver).Type?.SpecialType != SpecialType.System_String)
+            {
+                return SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(expected));
+            }
+
+            return SyntaxFactory.ArgumentList(
+                SyntaxFactory.SeparatedList(new[]
+                {
+                    expected,
+                    SyntaxFactory.Argument(
+                        SyntaxFactory.MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            SyntaxFactory.IdentifierName("Case"),
+                            SyntaxFactory.IdentifierName("Sensitive")))
+                }));
         }
     }
 }

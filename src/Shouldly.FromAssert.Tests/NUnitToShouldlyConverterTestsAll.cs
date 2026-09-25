@@ -234,11 +234,21 @@ public class NUnitToShouldlyConverterTestsAll
         {
             SetupCode = "var greeting = \"Hello, World!\";",
             NUnitAssertion = "StringAssert.Contains(\"World\", greeting);",
-            ShouldlyAssertion = "greeting.ShouldContain(\"World\");",
+            ShouldlyAssertion = "greeting.ShouldContain(\"World\", Case.Sensitive);",
             Line = 12,
             StartColumn = 13,
             EndColumn = 53
         }).SetName("StringAssert.Contains");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "var greeting = \"Hello, World!\";",
+            NUnitAssertion = "StringAssert.DoesNotContain(\"world\", greeting);",
+            ShouldlyAssertion = "greeting.ShouldNotContain(\"world\", Case.Sensitive);",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 59
+        }).SetName("StringAssert.DoesNotContain");
 
         yield return new TestCaseData(new TestCase
         {
@@ -354,11 +364,31 @@ public class NUnitToShouldlyConverterTestsAll
         {
             SetupCode = "var greeting = \"Hello, World!\";",
             NUnitAssertion = "Assert.That(greeting, Does.Contain(\"World\"));",
-            ShouldlyAssertion = "greeting.ShouldContain(\"World\");",
+            ShouldlyAssertion = "greeting.ShouldContain(\"World\", Case.Sensitive);",
             Line = 12,
             StartColumn = 13,
             EndColumn = 57
         }).SetName("Assert.That with Does.Contain");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "var greetings = new List<string> { \"Hello\", \"World\" };",
+            NUnitAssertion = "Assert.That(greetings, Does.Contain(\"World\"));",
+            ShouldlyAssertion = "greetings.ShouldContain(\"World\");",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 58
+        }).SetName("Assert.That with Does.Contain on a collection");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "string? greeting = \"Hello, World!\";",
+            NUnitAssertion = "Assert.That(greeting, Does.Contain(\"World\"));",
+            ShouldlyAssertion = "greeting.ShouldContain(\"World\", Case.Sensitive);",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 57
+        }).SetName("Assert.That with Does.Contain on a nullable string");
 
         yield return new TestCaseData(new TestCase
         {
