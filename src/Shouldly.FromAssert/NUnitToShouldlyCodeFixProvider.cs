@@ -443,7 +443,9 @@ namespace Shouldly.FromAssert
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
                 case "IsEmpty":
                 case "That" when arguments.Count == 2 && arguments[1].Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "Empty":
+                                 ma.Name.Identifier.Text == "Empty" &&
+                                 ma.Expression is IdentifierNameSyntax ins &&
+                                 ins.Identifier.Text == "Is":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -453,6 +455,12 @@ namespace Shouldly.FromAssert
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "IsNotEmpty":
+                case "That" when arguments.Count == 2 && arguments[1].Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "Empty" &&
+                                 ma.Expression is MemberAccessExpressionSyntax innerMa &&
+                                 innerMa.Name.Identifier.Text == "Not" &&
+                                 innerMa.Expression is IdentifierNameSyntax ins &&
+                                 ins.Identifier.Text == "Is":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,

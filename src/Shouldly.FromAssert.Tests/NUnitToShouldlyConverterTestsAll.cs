@@ -389,6 +389,16 @@ public class NUnitToShouldlyConverterTestsAll
             StartColumn = 13,
             EndColumn = 47
         }).SetName("Assert.That with Is.Empty");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "var contestants = new List<int> { 1 };",
+            NUnitAssertion = "Assert.That(contestants, Is.Not.Empty);",
+            ShouldlyAssertion = "contestants.ShouldNotBeEmpty();",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 51
+        }).SetName("Assert.That with Is.Not.Empty");
     }
 
 
