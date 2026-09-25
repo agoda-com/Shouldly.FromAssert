@@ -12,7 +12,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Shouldly.FromAssert
 {
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NUnitToShouldlyCodeFixProvider)), Shared]
-    public class NUnitToShouldlyCodeFixProvider : CodeFixProvider
+    public partial class NUnitToShouldlyCodeFixProvider : CodeFixProvider
     {
         private const string Title = "Convert to Shouldly";
 
@@ -48,7 +48,14 @@ namespace Shouldly.FromAssert
             if (invocation == null) return document;
 
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-            var newInvocation = ParenthesiseReceiver(ConvertToShouldly(invocation, semanticModel));
+
+            var newRoot = ConvertAssertThat(root, invocation, semanticModel);
+            if (newRoot != null)
+            {
+                return document.WithSyntaxRoot(newRoot);
+            }
+
+            var newInvocation = ParenthesiseReceiver(ConvertToShouldly(invocation, semanticModel, invocation.SpanStart));
 
             if (newInvocation != null)
             {
@@ -97,7 +104,7 @@ namespace Shouldly.FromAssert
             }
         }
 
-        private ExpressionSyntax ConvertToShouldly(InvocationExpressionSyntax invocation, SemanticModel semanticModel)
+        private ExpressionSyntax ConvertToShouldly(InvocationExpressionSyntax invocation, SemanticModel semanticModel, int position)
         {
             string methodName = null;
             if (invocation.Expression is MemberAccessExpressionSyntax memberAccessExpSyn)
@@ -407,7 +414,7 @@ namespace Shouldly.FromAssert
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 arguments[1].Expression,
                                 SyntaxFactory.IdentifierName("ShouldContain")),
-                            ContainArgumentList(arguments[1].Expression, arguments[0], semanticModel))
+                            ContainArgumentList(arguments[1].Expression, arguments[0], semanticModel, position))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "Contains":
@@ -433,7 +440,7 @@ namespace Shouldly.FromAssert
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 arguments[1].Expression,
                                 SyntaxFactory.IdentifierName("ShouldNotContain")),
-                            ContainArgumentList(arguments[1].Expression, arguments[0], semanticModel))
+                            ContainArgumentList(arguments[1].Expression, arguments[0], semanticModel, position))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
                 case "That" when assertClass == "Assert" &&
                                  arguments.Count == 2 &&
@@ -447,7 +454,7 @@ namespace Shouldly.FromAssert
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 arguments[0].Expression,
                                 SyntaxFactory.IdentifierName("ShouldContain")),
-                            ContainArgumentList(arguments[0].Expression, inv.ArgumentList.Arguments[0], semanticModel))
+                            ContainArgumentList(arguments[0].Expression, inv.ArgumentList.Arguments[0], semanticModel, position))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
                 case "That" when assertClass == "Assert" &&
                                  arguments.Count == 2 &&
@@ -725,6 +732,10 @@ namespace Shouldly.FromAssert
                         SyntaxFactory.ArgumentList(
                             SyntaxFactory.SingletonSeparatedList(inv.ArgumentList.Arguments[0])));
 
+                case "That" when assertClass == "Assert" && arguments.Count == 2:
+                    return ConvertAdditionalThatConstraint(invocation, semanticModel, position)
+                        ?.WithLeadingTrivia(invocation.GetLeadingTrivia());
+
                 default:
                     return null;
             }
@@ -775,7 +786,7 @@ namespace Shouldly.FromAssert
         private ExpressionSyntax ConvertCondition(ExpressionSyntax condition, SemanticModel semanticModel)
         {
             var converted = condition is InvocationExpressionSyntax inner && NUnitToShouldlyAnalyzer.IsReported(inner, semanticModel, CancellationToken.None)
-                ? ParenthesiseReceiver(ConvertToShouldly(inner, semanticModel))
+                ? ParenthesiseReceiver(ConvertToShouldly(inner, semanticModel, inner.SpanStart))
                 : null;
 
             return (converted ?? condition).WithoutTrivia();
@@ -784,9 +795,9 @@ namespace Shouldly.FromAssert
         // NUnit's string containment is case-sensitive, but Shouldly's string ShouldContain/ShouldNotContain
         // default to Case.Insensitive. The collection overloads have no Case parameter, so only add it
         // when the receiver is a string.
-        private static ArgumentListSyntax ContainArgumentList(ExpressionSyntax receiver, ArgumentSyntax expected, SemanticModel semanticModel)
+        private static ArgumentListSyntax ContainArgumentList(ExpressionSyntax receiver, ArgumentSyntax expected, SemanticModel semanticModel, int position)
         {
-            if (semanticModel?.GetTypeInfo(receiver).Type?.SpecialType != SpecialType.System_String)
+            if (!IsString(receiver, semanticModel, position))
             {
                 return SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(expected));
             }
