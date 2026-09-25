@@ -439,8 +439,84 @@ namespace TestNamespace
         // Add any additional assertions here if needed
     }
 
+    [Test]
+    public async Task UnqualifiedMethodStartingWithAssert_IsNotFlagged()
+    {
+        var test = @"
+using NUnit.Framework;
+namespace TestNamespace
+{
+    public class TestClass
+    {
+        [Test]
+        public void TestMethod()
+        {
+            AssertNoUnionTypedEnum(1337, ""auction"");
+        }
+
+        private static void AssertNoUnionTypedEnum(int node, string path) { }
+    }
+}";
+
+        await new CodeFixTest(test, test).RunAsync(CancellationToken.None);
+    }
+
+    [Test]
+    public async Task UserDefinedAssertClass_IsNotFlagged()
+    {
+        var test = @"
+namespace TestNamespace
+{
+    public static class Assert
+    {
+        public static void AreEqual(int expected, int actual) { }
+    }
+
+    public class TestClass
+    {
+        public void TestMethod()
+        {
+            Assert.AreEqual(1337, 1337);
+        }
+    }
+}";
+
+        await new CodeFixTest(test, test).RunAsync(CancellationToken.None);
+    }
+
+    [Test]
+    public async Task UsingStaticNUnitAssert_IsFlagged()
+    {
+        var test = @"
+using NUnit.Framework;
+using static NUnit.Framework.Assert;
+namespace TestNamespace
+{
+    public class TestClass
+    {
+        [Test]
+        public void TestMethod()
+        {
+            That(1337, Is.EqualTo(1337));
+        }
+    }
+}";
+
+        var analyzerTest = new CSharpAnalyzerTest<NUnitToShouldlyAnalyzer, NUnitVerifier>
+        {
+            TestCode = test,
+            ReferenceAssemblies = CodeFixTest.References
+        };
+        analyzerTest.ExpectedDiagnostics.Add(
+            CSharpAnalyzerVerifier<NUnitToShouldlyAnalyzer, NUnitVerifier>
+                .Diagnostic(NUnitToShouldlyAnalyzer.DiagnosticId)
+                .WithSpan(11, 13, 11, 41));
+
+        await analyzerTest.RunAsync(CancellationToken.None);
+    }
+
     private class
-        CodeFixTest : CSharpCodeFixTest<NUnitToShouldlyAnalyzer, NUnitToShouldlyCodeFixProvider, NUnitVerifier>
+        CodeFixTest :CSharpCodeFixTest<NUnitToShouldlyAnalyzer, NUnitToShouldlyCodeFixProvider, NUnitVerifier>
     {
         public CodeFixTest(
             string source,
@@ -451,13 +527,15 @@ namespace TestNamespace
             FixedCode = fixedSource;
             ExpectedDiagnostics.AddRange(expected);
 
-            ReferenceAssemblies = ReferenceAssemblies.Default
-                .AddPackages(ImmutableArray.Create(
-                        new PackageIdentity("Shouldly", "4.2.1"),
-                        new PackageIdentity("NUnit", "3.14.0")
-                    )
-                );
+            ReferenceAssemblies = References;
         }
+
+        public static readonly ReferenceAssemblies References = ReferenceAssemblies.Default
+            .AddPackages(ImmutableArray.Create(
+                    new PackageIdentity("Shouldly", "4.2.1"),
+                    new PackageIdentity("NUnit", "3.14.0")
+                )
+            );
     }
 
     public class TestCase
