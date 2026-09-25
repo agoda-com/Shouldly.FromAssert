@@ -389,6 +389,86 @@ public class NUnitToShouldlyConverterTestsAll
             StartColumn = 13,
             EndColumn = 47
         }).SetName("Assert.That with Is.Empty");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "var contestant = 1337;",
+            NUnitAssertion = "Assert.That(contestant, Is.GreaterThan(1000));",
+            ShouldlyAssertion = "contestant.ShouldBeGreaterThan(1000);",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 58
+        }).SetName("Assert.That with Is.GreaterThan");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "var contestant = 1337;",
+            NUnitAssertion = "Assert.That(contestant, Is.GreaterThanOrEqualTo(1337));",
+            ShouldlyAssertion = "contestant.ShouldBeGreaterThanOrEqualTo(1337);",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 67
+        }).SetName("Assert.That with Is.GreaterThanOrEqualTo");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "var contestant = 0.9;",
+            NUnitAssertion = "Assert.That(contestant, Is.LessThan(0.95));",
+            ShouldlyAssertion = "contestant.ShouldBeLessThan(0.95);",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 55
+        }).SetName("Assert.That with Is.LessThan");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "var contestant = 1337;",
+            NUnitAssertion = "Assert.That(contestant, Is.LessThanOrEqualTo(1337));",
+            ShouldlyAssertion = "contestant.ShouldBeLessThanOrEqualTo(1337);",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 64
+        }).SetName("Assert.That with Is.LessThanOrEqualTo");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "var contestant = \"EBG\";",
+            NUnitAssertion = "Assert.That(contestant, Has.Length.LessThanOrEqualTo(3));",
+            ShouldlyAssertion = "contestant.Length.ShouldBeLessThanOrEqualTo(3);",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 69
+        }).SetName("Assert.That with Has.Length.LessThanOrEqualTo");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "var contestant = \"EBG\";",
+            NUnitAssertion = "Assert.That(contestant.Trim(), Has.Length.GreaterThan(0));",
+            ShouldlyAssertion = "contestant.Trim().Length.ShouldBeGreaterThan(0);",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 70
+        }).SetName("Assert.That with Has.Length on invocation receiver");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "var contestants = new List<int> { 1337 };",
+            NUnitAssertion = "Assert.That(contestants, Has.Count.GreaterThanOrEqualTo(1));",
+            ShouldlyAssertion = "contestants.Count.ShouldBeGreaterThanOrEqualTo(1);",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 72
+        }).SetName("Assert.That with Has.Count.GreaterThanOrEqualTo");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "var contestant = \"EBG\";",
+            NUnitAssertion = "Assert.That(contestant ?? \"\", Has.Length.LessThan(4));",
+            ShouldlyAssertion = "(contestant ?? \"\").Length.ShouldBeLessThan(4);",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 66
+        }).SetName("Assert.That with Has.Length on binary receiver");
     }
 
 
