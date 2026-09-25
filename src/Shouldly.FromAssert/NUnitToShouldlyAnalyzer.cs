@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -29,33 +30,25 @@ namespace Shouldly.FromAssert
             context.RegisterSyntaxNodeAction(AnalyzeNode, SyntaxKind.InvocationExpression);
         }
 
+        private static readonly ImmutableHashSet<string> NUnitAssertTypes = ImmutableHashSet.Create(
+            "NUnit.Framework.Assert",
+            "NUnit.Framework.StringAssert",
+            "NUnit.Framework.CollectionAssert");
+
         private static void AnalyzeNode(SyntaxNodeAnalysisContext context)
         {
             var invocation = (InvocationExpressionSyntax)context.Node;
-            string methodName = null;
-            string assertClass = null;
 
-            if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
-            {
-                methodName = memberAccess.Name.Identifier.Text;
-                if (memberAccess.Expression is IdentifierNameSyntax identifier)
-                {
-                    assertClass = identifier.Identifier.Text;
-                }
-            }
-            else if (invocation.Expression is IdentifierNameSyntax identifierName)
-            {
-                methodName = identifierName.Identifier.Text;
-            }
+            var symbolInfo = context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken);
+            var method = symbolInfo.Symbol as IMethodSymbol
+                         ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
+            if (method == null) return;
 
-            if (methodName == null) return;
+            var containingType = method.ContainingType?.ToDisplayString();
+            if (containingType == null || !NUnitAssertTypes.Contains(containingType)) return;
 
-            if (assertClass == "Assert" || assertClass == "StringAssert" || assertClass == "CollectionAssert" ||
-                (assertClass == null && methodName.StartsWith("Assert")))
-            {
-                var diagnostic = Diagnostic.Create(Rule, invocation.GetLocation());
-                context.ReportDiagnostic(diagnostic);
-            }
+            var diagnostic = Diagnostic.Create(Rule, invocation.GetLocation());
+            context.ReportDiagnostic(diagnostic);
         }
     }
 }
