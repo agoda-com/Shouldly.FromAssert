@@ -12,7 +12,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Shouldly.FromAssert
 {
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NUnitToShouldlyCodeFixProvider)), Shared]
-    public class NUnitToShouldlyCodeFixProvider : CodeFixProvider
+    public partial class NUnitToShouldlyCodeFixProvider : CodeFixProvider
     {
         private const string Title = "Convert to Shouldly";
 
@@ -47,7 +47,15 @@ namespace Shouldly.FromAssert
 
             if (invocation == null) return document;
 
-            var newInvocation = ConvertToShouldly(invocation);
+            var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+
+            var newRoot = ConvertAssertThat(root, invocation, semanticModel);
+            if (newRoot != null)
+            {
+                return document.WithSyntaxRoot(newRoot);
+            }
+
+            var newInvocation = ConvertToShouldly(invocation, semanticModel, invocation.SpanStart);
 
             if (newInvocation != null)
             {
@@ -58,7 +66,7 @@ namespace Shouldly.FromAssert
             return document;
         }
 
-        private ExpressionSyntax ConvertToShouldly(InvocationExpressionSyntax invocation)
+        private ExpressionSyntax ConvertToShouldly(InvocationExpressionSyntax invocation, SemanticModel semanticModel, int position)
         {
             string methodName = null;
             if (invocation.Expression is MemberAccessExpressionSyntax memberAccessExpSyn)
@@ -676,6 +684,10 @@ namespace Shouldly.FromAssert
                             SyntaxFactory.IdentifierName("ShouldEndWith")),
                         SyntaxFactory.ArgumentList(
                             SyntaxFactory.SingletonSeparatedList(inv.ArgumentList.Arguments[0])));
+
+                case "That" when assertClass == "Assert" && arguments.Count == 2:
+                    return ConvertAdditionalThatConstraint(invocation, semanticModel, position)
+                        ?.WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 default:
                     return null;

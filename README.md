@@ -61,6 +61,11 @@ Here are some examples of the transformations this analyzer can perform:
 | `CollectionAssert.Contains(list, item)`            | `list.ShouldContain(item)`                |
 | `StringAssert.StartsWith("Hi", str)`               | `str.ShouldStartWith("Hi")`               |
 | `Assert.Throws<ArgumentException>(() => method())`  | `Should.Throw<ArgumentException>(() => method())` |
+| `Assert.That(x, Is.EqualTo(y), "why")`             | `x.ShouldBe(y, "why")`                     |
+| `Assert.That(x, Is.Null)`                          | `x.ShouldBeNull()`                        |
+| `Assert.That(list, Has.Count.EqualTo(3))`          | `list.Count.ShouldBe(3)`                  |
+| `Assert.That(list, Is.EquivalentTo(other))`        | `list.ShouldBe(other, ignoreOrder: true)` |
+| `Assert.That(s, Does.StartWith("/").And.EndWith(".png"))` | `s.ShouldStartWith("/");` `s.ShouldEndWith(".png");` |
 
 And many more! Check out the tests for a complete list of supported conversions.
 
