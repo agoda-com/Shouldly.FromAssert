@@ -546,9 +546,6 @@ namespace Shouldly.FromAssert
                                     inv.ArgumentList.Arguments[0])))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
                 case "Greater":
-                case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "GreaterThan":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -558,9 +555,6 @@ namespace Shouldly.FromAssert
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "GreaterOrEqual":
-                case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "GreaterThanOrEqualTo":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -570,9 +564,6 @@ namespace Shouldly.FromAssert
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "Less":
-                case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "LessThan":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -582,15 +573,24 @@ namespace Shouldly.FromAssert
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "LessOrEqual":
-                case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "LessThanOrEqualTo":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 arguments[0].Expression,
                                 SyntaxFactory.IdentifierName("ShouldBeLessThanOrEqualTo")),
                             SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(arguments[1])))
+                        .WithLeadingTrivia(invocation.GetLeadingTrivia());
+
+                case "That" when assertClass == "Assert" &&
+                                 arguments.Count == 2 &&
+                                 TryGetComparison(arguments[0].Expression, arguments[1].Expression,
+                                     out var actual, out var shouldlyMethod, out var expected):
+                    return SyntaxFactory.InvocationExpression(
+                            SyntaxFactory.MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                actual,
+                                SyntaxFactory.IdentifierName(shouldlyMethod)),
+                            SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(expected)))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "IsNaN" when assertClass == "Assert":
@@ -802,5 +802,67 @@ namespace Shouldly.FromAssert
                             SyntaxFactory.IdentifierName("Sensitive")))
                 }));
         }
+
+        private static readonly ImmutableDictionary<string, string> ComparisonConstraints =
+            ImmutableDictionary.CreateRange(new[]
+            {
+                new System.Collections.Generic.KeyValuePair<string, string>("GreaterThan", "ShouldBeGreaterThan"),
+                new System.Collections.Generic.KeyValuePair<string, string>("GreaterThanOrEqualTo", "ShouldBeGreaterThanOrEqualTo"),
+                new System.Collections.Generic.KeyValuePair<string, string>("LessThan", "ShouldBeLessThan"),
+                new System.Collections.Generic.KeyValuePair<string, string>("LessThanOrEqualTo", "ShouldBeLessThanOrEqualTo"),
+            });
+
+        // Matches Is.GreaterThan(x) and Has.Length/Has.Count.GreaterThan(x) (and the other comparisons).
+        // For the Has.* forms the property moves onto the actual value, e.g. actual.Length.ShouldBeLessThan(x).
+        private static bool TryGetComparison(
+            ExpressionSyntax actualExpression,
+            ExpressionSyntax constraint,
+            out ExpressionSyntax actual,
+            out string shouldlyMethod,
+            out ArgumentSyntax expected)
+        {
+            actual = null;
+            shouldlyMethod = null;
+            expected = null;
+
+            if (!(constraint is InvocationExpressionSyntax inv) ||
+                !(inv.Expression is MemberAccessExpressionSyntax ma) ||
+                inv.ArgumentList.Arguments.Count != 1 ||
+                !ComparisonConstraints.TryGetValue(ma.Name.Identifier.Text, out shouldlyMethod))
+            {
+                return false;
+            }
+
+            switch (ma.Expression)
+            {
+                case IdentifierNameSyntax isName when isName.Identifier.Text == "Is":
+                    actual = actualExpression;
+                    break;
+                case MemberAccessExpressionSyntax hasProperty when
+                    hasProperty.Expression is IdentifierNameSyntax hasName &&
+                    hasName.Identifier.Text == "Has" &&
+                    (hasProperty.Name.Identifier.Text == "Length" || hasProperty.Name.Identifier.Text == "Count"):
+                    actual = SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        ParenthesiseIfNeeded(actualExpression),
+                        SyntaxFactory.IdentifierName(hasProperty.Name.Identifier.Text));
+                    break;
+                default:
+                    return false;
+            }
+
+            expected = inv.ArgumentList.Arguments[0];
+            return true;
+        }
+
+        private static ExpressionSyntax ParenthesiseIfNeeded(ExpressionSyntax expression) =>
+            expression is IdentifierNameSyntax ||
+            expression is MemberAccessExpressionSyntax ||
+            expression is InvocationExpressionSyntax ||
+            expression is ElementAccessExpressionSyntax ||
+            expression is ParenthesizedExpressionSyntax ||
+            expression is ThisExpressionSyntax
+                ? expression
+                : SyntaxFactory.ParenthesizedExpression(expression);
     }
 }
