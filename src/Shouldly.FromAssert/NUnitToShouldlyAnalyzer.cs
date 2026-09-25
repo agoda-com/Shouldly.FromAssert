@@ -32,6 +32,16 @@ namespace Shouldly.FromAssert
         private static void AnalyzeNode(SyntaxNodeAnalysisContext context)
         {
             var invocation = (InvocationExpressionSyntax)context.Node;
+
+            if (IsReported(invocation))
+            {
+                var diagnostic = Diagnostic.Create(Rule, invocation.GetLocation());
+                context.ReportDiagnostic(diagnostic);
+            }
+        }
+
+        internal static bool IsReported(InvocationExpressionSyntax invocation)
+        {
             string methodName = null;
             string assertClass = null;
 
@@ -48,14 +58,13 @@ namespace Shouldly.FromAssert
                 methodName = identifierName.Identifier.Text;
             }
 
-            if (methodName == null) return;
+            if (methodName == null) return false;
 
-            if (assertClass == "Assert" || assertClass == "StringAssert" || assertClass == "CollectionAssert" ||
-                (assertClass == null && methodName.StartsWith("Assert")))
-            {
-                var diagnostic = Diagnostic.Create(Rule, invocation.GetLocation());
-                context.ReportDiagnostic(diagnostic);
-            }
+            // Only report Assert.Multiple when the fix can turn it into ShouldSatisfyAllConditions.
+            if (AssertMultiple.IsAssertMultiple(invocation) && AssertMultiple.GetConditions(invocation) == null) return false;
+
+            return assertClass == "Assert" || assertClass == "StringAssert" || assertClass == "CollectionAssert" ||
+                   (assertClass == null && methodName.StartsWith("Assert"));
         }
     }
 }

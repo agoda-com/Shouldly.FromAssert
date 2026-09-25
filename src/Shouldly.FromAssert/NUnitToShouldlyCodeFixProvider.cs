@@ -85,6 +85,9 @@ namespace Shouldly.FromAssert
 
             switch (methodName)
             {
+                case "Multiple" when assertClass == "Assert":
+                    return ConvertAssertMultiple(invocation);
+
                 case "DoesNotContain" when assertClass == "CollectionAssert":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
@@ -682,6 +685,55 @@ namespace Shouldly.FromAssert
             }
 
             return null;
+        }
+
+        // Assert.Multiple(() => { a; b; }) -> this.ShouldSatisfyAllConditions(() => a, () => b), one condition per line.
+        // Inner asserts are converted in the same step, so a fix-all doesn't have to merge overlapping edits.
+        private ExpressionSyntax ConvertAssertMultiple(InvocationExpressionSyntax invocation)
+        {
+            var conditions = AssertMultiple.GetConditions(invocation);
+            if (conditions == null) return null;
+
+            var endOfLine = invocation.SyntaxTree.GetRoot().DescendantTrivia()
+                .FirstOrDefault(t => t.IsKind(SyntaxKind.EndOfLineTrivia));
+            if (endOfLine == default) endOfLine = SyntaxFactory.CarriageReturnLineFeed;
+
+            var indentation = invocation.GetLeadingTrivia().LastOrDefault(t => t.IsKind(SyntaxKind.WhitespaceTrivia));
+            var argumentIndentation = SyntaxFactory.Whitespace(indentation.ToString() + "    ");
+
+            var arguments = conditions.Select(condition =>
+                SyntaxFactory.Argument(
+                        SyntaxFactory.ParenthesizedLambdaExpression(ConvertCondition(condition))
+                            .WithArrowToken(SyntaxFactory.Token(
+                                SyntaxFactory.TriviaList(SyntaxFactory.Space),
+                                SyntaxKind.EqualsGreaterThanToken,
+                                SyntaxFactory.TriviaList(SyntaxFactory.Space))))
+                    .WithLeadingTrivia(argumentIndentation));
+
+            var separators = Enumerable.Repeat(
+                SyntaxFactory.Token(SyntaxKind.CommaToken).WithTrailingTrivia(endOfLine),
+                conditions.Count - 1);
+
+            return SyntaxFactory.InvocationExpression(
+                    SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        SyntaxFactory.ThisExpression(),
+                        SyntaxFactory.IdentifierName("ShouldSatisfyAllConditions")),
+                    SyntaxFactory.ArgumentList(
+                        SyntaxFactory.Token(SyntaxKind.OpenParenToken).WithTrailingTrivia(endOfLine),
+                        SyntaxFactory.SeparatedList(arguments, separators),
+                        SyntaxFactory.Token(SyntaxKind.CloseParenToken)))
+                .WithLeadingTrivia(invocation.GetLeadingTrivia())
+                .WithTrailingTrivia(invocation.GetTrailingTrivia());
+        }
+
+        private ExpressionSyntax ConvertCondition(ExpressionSyntax condition)
+        {
+            var converted = condition is InvocationExpressionSyntax inner && NUnitToShouldlyAnalyzer.IsReported(inner)
+                ? ConvertToShouldly(inner)
+                : null;
+
+            return (converted ?? condition).WithoutTrivia();
         }
     }
 }

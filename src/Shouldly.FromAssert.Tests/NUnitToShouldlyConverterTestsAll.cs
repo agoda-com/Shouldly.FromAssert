@@ -439,6 +439,122 @@ namespace TestNamespace
         // Add any additional assertions here if needed
     }
 
+    private static IEnumerable<TestCaseData> AssertMultipleTestCases()
+    {
+        yield return new TestCaseData(
+            @"var contestant = 1337;
+            var name = ""Joel"";
+            [|Assert.Multiple(() =>
+            {
+                [|Assert.That(contestant, Is.EqualTo(1337))|];
+                [|Assert.IsNotNull(name)|];
+            })|];",
+            @"var contestant = 1337;
+            var name = ""Joel"";
+            this.ShouldSatisfyAllConditions(
+                () => contestant.ShouldBe(1337),
+                () => name.ShouldNotBeNull());"
+        ).SetName("Assert.Multiple converts each inner assertion into a condition");
+
+        yield return new TestCaseData(
+            @"var contestants = new List<int> { 1 };
+            [|Assert.Multiple(() =>
+            {
+                [|Assert.That(contestants, Has.Count.EqualTo(1))|];
+                contestants.ShouldNotBeEmpty();
+            })|];",
+            @"var contestants = new List<int> { 1 };
+            this.ShouldSatisfyAllConditions(
+                () => [|Assert.That(contestants, Has.Count.EqualTo(1))|],
+                () => contestants.ShouldNotBeEmpty());"
+        ).SetName("Assert.Multiple keeps statements it cannot convert");
+
+        yield return new TestCaseData(
+            @"var contestant = 1337;
+            [|Assert.Multiple(() => [|Assert.AreEqual(1337, contestant)|])|];",
+            @"var contestant = 1337;
+            this.ShouldSatisfyAllConditions(
+                () => contestant.ShouldBe(1337));"
+        ).SetName("Assert.Multiple with an expression-bodied lambda");
+    }
+
+    [Test]
+    [TestCaseSource(nameof(AssertMultipleTestCases))]
+    public async Task TestAssertMultipleConversion(string before, string after)
+    {
+        var codeFixTest = new CodeFixTest(WrapInTestMethod(before), WrapInTestMethod(after));
+        // Statements left as NUnit asserts are still reported after the fix.
+        codeFixTest.FixedState.MarkupHandling = MarkupMode.Allow;
+
+        await codeFixTest.RunAsync(CancellationToken.None);
+    }
+
+    private static IEnumerable<TestCaseData> UnconvertibleAssertMultipleTestCases()
+    {
+        yield return new TestCaseData(
+            "public async Task TestMethod()",
+            @"var contestant = 1337;
+            Assert.Multiple(async () =>
+            {
+                await Task.Yield();
+                [|Assert.That(contestant, Is.EqualTo(1337))|];
+            });"
+        ).SetName("Assert.Multiple with an async lambda is not reported");
+
+        yield return new TestCaseData(
+            "public void TestMethod()",
+            @"Assert.Multiple(() =>
+            {
+                var contestant = 1337;
+                [|Assert.That(contestant, Is.EqualTo(1337))|];
+            });"
+        ).SetName("Assert.Multiple declaring a local is not reported");
+
+        yield return new TestCaseData(
+            "public static void TestMethod()",
+            @"var contestant = 1337;
+            Assert.Multiple(() =>
+            {
+                [|Assert.That(contestant, Is.EqualTo(1337))|];
+            });"
+        ).SetName("Assert.Multiple in a static method is not reported");
+    }
+
+    [Test]
+    [TestCaseSource(nameof(UnconvertibleAssertMultipleTestCases))]
+    public async Task TestUnconvertibleAssertMultipleIsNotReported(string signature, string body)
+    {
+        var test = new CSharpAnalyzerTest<NUnitToShouldlyAnalyzer, NUnitVerifier>
+        {
+            TestCode = WrapInTestMethod(body, signature),
+            ReferenceAssemblies = TestReferenceAssemblies
+        };
+
+        await test.RunAsync(CancellationToken.None);
+    }
+
+    private static string WrapInTestMethod(string body, string signature = "public void TestMethod()") => $@"
+using NUnit.Framework;using System.Collections.Generic;using System;using System.Threading.Tasks;
+using Shouldly;
+namespace TestNamespace
+{{
+    public class TestClass
+    {{
+        [Test]
+        {signature}
+        {{
+            {body}
+        }}
+    }}
+}}";
+
+    private static readonly ReferenceAssemblies TestReferenceAssemblies = ReferenceAssemblies.Default
+        .AddPackages(ImmutableArray.Create(
+                new PackageIdentity("Shouldly", "4.2.1"),
+                new PackageIdentity("NUnit", "3.14.0")
+            )
+        );
+
     private class
         CodeFixTest : CSharpCodeFixTest<NUnitToShouldlyAnalyzer, NUnitToShouldlyCodeFixProvider, NUnitVerifier>
     {
