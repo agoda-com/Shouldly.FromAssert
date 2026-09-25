@@ -47,7 +47,8 @@ namespace Shouldly.FromAssert
 
             if (invocation == null) return document;
 
-            var newInvocation = ConvertToShouldly(invocation);
+            var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+            var newInvocation = ConvertToShouldly(invocation, semanticModel);
 
             if (newInvocation != null)
             {
@@ -58,7 +59,7 @@ namespace Shouldly.FromAssert
             return document;
         }
 
-        private ExpressionSyntax ConvertToShouldly(InvocationExpressionSyntax invocation)
+        private ExpressionSyntax ConvertToShouldly(InvocationExpressionSyntax invocation, SemanticModel semanticModel)
         {
             string methodName = null;
             if (invocation.Expression is MemberAccessExpressionSyntax memberAccessExpSyn)
@@ -85,6 +86,9 @@ namespace Shouldly.FromAssert
 
             switch (methodName)
             {
+                case "Multiple" when assertClass == "Assert":
+                    return ConvertAssertMultiple(invocation, semanticModel);
+
                 case "DoesNotContain" when assertClass == "CollectionAssert":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
@@ -682,6 +686,55 @@ namespace Shouldly.FromAssert
             }
 
             return null;
+        }
+
+        // Assert.Multiple(() => { a; b; }) -> this.ShouldSatisfyAllConditions(() => a, () => b), one condition per line.
+        // Inner asserts are converted in the same step, so a fix-all doesn't have to merge overlapping edits.
+        private ExpressionSyntax ConvertAssertMultiple(InvocationExpressionSyntax invocation, SemanticModel semanticModel)
+        {
+            var conditions = AssertMultiple.GetConditions(invocation);
+            if (conditions == null) return null;
+
+            var endOfLine = invocation.SyntaxTree.GetRoot().DescendantTrivia()
+                .FirstOrDefault(t => t.IsKind(SyntaxKind.EndOfLineTrivia));
+            if (endOfLine == default) endOfLine = SyntaxFactory.CarriageReturnLineFeed;
+
+            var indentation = invocation.GetLeadingTrivia().LastOrDefault(t => t.IsKind(SyntaxKind.WhitespaceTrivia));
+            var argumentIndentation = SyntaxFactory.Whitespace(indentation.ToString() + "    ");
+
+            var arguments = conditions.Select(condition =>
+                SyntaxFactory.Argument(
+                        SyntaxFactory.ParenthesizedLambdaExpression(ConvertCondition(condition, semanticModel))
+                            .WithArrowToken(SyntaxFactory.Token(
+                                SyntaxFactory.TriviaList(SyntaxFactory.Space),
+                                SyntaxKind.EqualsGreaterThanToken,
+                                SyntaxFactory.TriviaList(SyntaxFactory.Space))))
+                    .WithLeadingTrivia(argumentIndentation));
+
+            var separators = Enumerable.Repeat(
+                SyntaxFactory.Token(SyntaxKind.CommaToken).WithTrailingTrivia(endOfLine),
+                conditions.Count - 1);
+
+            return SyntaxFactory.InvocationExpression(
+                    SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        SyntaxFactory.ThisExpression(),
+                        SyntaxFactory.IdentifierName("ShouldSatisfyAllConditions")),
+                    SyntaxFactory.ArgumentList(
+                        SyntaxFactory.Token(SyntaxKind.OpenParenToken).WithTrailingTrivia(endOfLine),
+                        SyntaxFactory.SeparatedList(arguments, separators),
+                        SyntaxFactory.Token(SyntaxKind.CloseParenToken)))
+                .WithLeadingTrivia(invocation.GetLeadingTrivia())
+                .WithTrailingTrivia(invocation.GetTrailingTrivia());
+        }
+
+        private ExpressionSyntax ConvertCondition(ExpressionSyntax condition, SemanticModel semanticModel)
+        {
+            var converted = condition is InvocationExpressionSyntax inner && NUnitToShouldlyAnalyzer.IsReported(inner, semanticModel, CancellationToken.None)
+                ? ConvertToShouldly(inner, semanticModel)
+                : null;
+
+            return (converted ?? condition).WithoutTrivia();
         }
     }
 }
