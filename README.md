@@ -61,8 +61,16 @@ Here are some examples of the transformations this analyzer can perform:
 | `CollectionAssert.Contains(list, item)`            | `list.ShouldContain(item)`                |
 | `StringAssert.StartsWith("Hi", str)`               | `str.ShouldStartWith("Hi")`               |
 | `Assert.Throws<ArgumentException>(() => method())`  | `Should.Throw<ArgumentException>(() => method())` |
+| `Assert.Multiple(() => { Assert.That(a, Is.EqualTo(1)); Assert.IsNotNull(b); })` | `this.ShouldSatisfyAllConditions(() => a.ShouldBe(1), () => b.ShouldNotBeNull())` |
+| `Assert.That(x, Is.EqualTo(y), "why")`             | `x.ShouldBe(y, "why")`                     |
+| `Assert.That(x, Is.Null)`                          | `x.ShouldBeNull()`                        |
+| `Assert.That(list, Has.Count.EqualTo(3))`          | `list.Count.ShouldBe(3)`                  |
+| `Assert.That(list, Is.EquivalentTo(other))`        | `list.ShouldBe(other, ignoreOrder: true)` |
+| `Assert.That(s, Does.StartWith("/").And.EndWith(".png"))` | `s.ShouldStartWith("/");` `s.ShouldEndWith(".png");` |
 
 And many more! Check out the tests for a complete list of supported conversions.
+
+`Assert.Multiple` is only converted (and only reported) when its lambda is synchronous, contains nothing but expression statements, and sits in an instance member, since `ShouldSatisfyAllConditions` needs `this` and takes one `Action` per condition. Hoist locals and awaited values out of the block first. With nullable enabled, a `x!.` on the first statement no longer carries into the later lambdas; add `x.ShouldNotBeNull();` above the block instead.
 
 ## Contributing
 

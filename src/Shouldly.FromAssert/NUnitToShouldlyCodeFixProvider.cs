@@ -1,4 +1,5 @@
-﻿using System.Collections.Immutable;
+﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
 using System.Threading;
@@ -12,7 +13,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Shouldly.FromAssert
 {
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NUnitToShouldlyCodeFixProvider)), Shared]
-    public class NUnitToShouldlyCodeFixProvider : CodeFixProvider
+    public partial class NUnitToShouldlyCodeFixProvider : CodeFixProvider
     {
         private const string Title = "Convert to Shouldly";
 
@@ -47,7 +48,15 @@ namespace Shouldly.FromAssert
 
             if (invocation == null) return document;
 
-            var newInvocation = ConvertToShouldly(invocation);
+            var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+
+            var newRoot = ConvertAssertThat(root, invocation, semanticModel);
+            if (newRoot != null)
+            {
+                return document.WithSyntaxRoot(newRoot);
+            }
+
+            var newInvocation = ParenthesiseReceiver(ConvertToShouldly(invocation, semanticModel, invocation.SpanStart));
 
             if (newInvocation != null)
             {
@@ -58,7 +67,43 @@ namespace Shouldly.FromAssert
             return document;
         }
 
-        private ExpressionSyntax ConvertToShouldly(InvocationExpressionSyntax invocation)
+        // `x.ShouldBe(...)` binds to the whole receiver only when the receiver is a primary expression.
+        // Anything else (await, ?., binary, conditional, cast, ...) must be wrapped, otherwise the
+        // Should call binds to the last operand: `await t.ShouldBe(1)` fails to compile and
+        // `a?.B.ShouldBe(1)` silently skips the assertion when `a` is null.
+        private static ExpressionSyntax ParenthesiseReceiver(ExpressionSyntax converted)
+        {
+            return converted is InvocationExpressionSyntax shouldInvocation &&
+                   shouldInvocation.Expression is MemberAccessExpressionSyntax shouldAccess
+                ? shouldInvocation.WithExpression(shouldAccess.WithExpression(ParenthesiseIfNeeded(shouldAccess.Expression)))
+                : converted;
+        }
+
+        private static ExpressionSyntax ParenthesiseIfNeeded(ExpressionSyntax expression) =>
+            NeedsParentheses(expression)
+                ? SyntaxFactory.ParenthesizedExpression(expression.WithoutTrivia()).WithTriviaFrom(expression)
+                : expression;
+
+        private static bool NeedsParentheses(ExpressionSyntax receiver)
+        {
+            switch (receiver)
+            {
+                case SimpleNameSyntax _:
+                case MemberAccessExpressionSyntax _:
+                case InvocationExpressionSyntax _:
+                case ElementAccessExpressionSyntax _:
+                case ParenthesizedExpressionSyntax _:
+                case LiteralExpressionSyntax _:
+                case ThisExpressionSyntax _:
+                case PredefinedTypeSyntax _:
+                case TypeOfExpressionSyntax _:
+                    return false;
+                default:
+                    return true;
+            }
+        }
+
+        private ExpressionSyntax ConvertToShouldly(InvocationExpressionSyntax invocation, SemanticModel semanticModel, int position)
         {
             string methodName = null;
             if (invocation.Expression is MemberAccessExpressionSyntax memberAccessExpSyn)
@@ -85,6 +130,9 @@ namespace Shouldly.FromAssert
 
             switch (methodName)
             {
+                case "Multiple" when AssertMultiple.IsAssertMultiple(invocation):
+                    return ConvertAssertMultiple(invocation, semanticModel);
+
                 case "DoesNotContain" when assertClass == "CollectionAssert":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
@@ -365,7 +413,7 @@ namespace Shouldly.FromAssert
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 arguments[1].Expression,
                                 SyntaxFactory.IdentifierName("ShouldContain")),
-                            SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(arguments[0])))
+                            ContainArgumentList(arguments[1].Expression, arguments[0], semanticModel, position))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "Contains":
@@ -391,7 +439,7 @@ namespace Shouldly.FromAssert
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 arguments[1].Expression,
                                 SyntaxFactory.IdentifierName("ShouldNotContain")),
-                            SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(arguments[0])))
+                            ContainArgumentList(arguments[1].Expression, arguments[0], semanticModel, position))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
                 case "That" when assertClass == "Assert" &&
                                  arguments.Count == 2 &&
@@ -405,9 +453,7 @@ namespace Shouldly.FromAssert
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 arguments[0].Expression,
                                 SyntaxFactory.IdentifierName("ShouldContain")),
-                            SyntaxFactory.ArgumentList(
-                                SyntaxFactory.SingletonSeparatedList(
-                                    inv.ArgumentList.Arguments[0])))
+                            ContainArgumentList(arguments[0].Expression, inv.ArgumentList.Arguments[0], semanticModel, position))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
                 case "That" when assertClass == "Assert" &&
                                  arguments.Count == 2 &&
@@ -443,7 +489,9 @@ namespace Shouldly.FromAssert
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
                 case "IsEmpty":
                 case "That" when arguments.Count == 2 && arguments[1].Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "Empty":
+                                 ma.Name.Identifier.Text == "Empty" &&
+                                 ma.Expression is IdentifierNameSyntax ins &&
+                                 ins.Identifier.Text == "Is":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -453,6 +501,12 @@ namespace Shouldly.FromAssert
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "IsNotEmpty":
+                case "That" when arguments.Count == 2 && arguments[1].Expression is MemberAccessExpressionSyntax ma &&
+                                 ma.Name.Identifier.Text == "Empty" &&
+                                 ma.Expression is MemberAccessExpressionSyntax innerMa &&
+                                 innerMa.Name.Identifier.Text == "Not" &&
+                                 innerMa.Expression is IdentifierNameSyntax ins &&
+                                 ins.Identifier.Text == "Is":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -498,9 +552,6 @@ namespace Shouldly.FromAssert
                                     inv.ArgumentList.Arguments[0])))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
                 case "Greater":
-                case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "GreaterThan":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -510,9 +561,6 @@ namespace Shouldly.FromAssert
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "GreaterOrEqual":
-                case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "GreaterThanOrEqualTo":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -522,9 +570,6 @@ namespace Shouldly.FromAssert
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "Less":
-                case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "LessThan":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -534,15 +579,24 @@ namespace Shouldly.FromAssert
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "LessOrEqual":
-                case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "LessThanOrEqualTo":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 arguments[0].Expression,
                                 SyntaxFactory.IdentifierName("ShouldBeLessThanOrEqualTo")),
                             SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(arguments[1])))
+                        .WithLeadingTrivia(invocation.GetLeadingTrivia());
+
+                case "That" when assertClass == "Assert" &&
+                                 arguments.Count == 2 &&
+                                 TryGetComparison(arguments[0].Expression, arguments[1].Expression,
+                                     out var actual, out var shouldlyMethod, out var expected):
+                    return SyntaxFactory.InvocationExpression(
+                            SyntaxFactory.MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                actual,
+                                SyntaxFactory.IdentifierName(shouldlyMethod)),
+                            SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(expected)))
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "IsNaN" when assertClass == "Assert":
@@ -677,11 +731,154 @@ namespace Shouldly.FromAssert
                         SyntaxFactory.ArgumentList(
                             SyntaxFactory.SingletonSeparatedList(inv.ArgumentList.Arguments[0])));
 
+                case "That" when assertClass == "Assert" && arguments.Count == 2:
+                    return ConvertAdditionalThatConstraint(invocation, semanticModel, position)
+                        ?.WithLeadingTrivia(invocation.GetLeadingTrivia());
+
                 default:
                     return null;
             }
 
             return null;
         }
+
+        // Assert.Multiple(() => { a; b; }) -> this.ShouldSatisfyAllConditions(() => a, () => b), one condition per line.
+        // Inner asserts are converted in the same step, so a fix-all doesn't have to merge overlapping edits.
+        private ExpressionSyntax ConvertAssertMultiple(InvocationExpressionSyntax invocation, SemanticModel semanticModel)
+        {
+            var conditions = AssertMultiple.GetConditions(invocation);
+            if (conditions == null) return null;
+
+            var endOfLine = invocation.SyntaxTree.GetRoot().DescendantTrivia()
+                .FirstOrDefault(t => t.IsKind(SyntaxKind.EndOfLineTrivia));
+            if (endOfLine == default) endOfLine = SyntaxFactory.CarriageReturnLineFeed;
+
+            var indentation = invocation.GetLeadingTrivia().LastOrDefault(t => t.IsKind(SyntaxKind.WhitespaceTrivia));
+            var argumentIndentation = SyntaxFactory.Whitespace(indentation.ToString() + "    ");
+
+            var arguments = conditions.SelectMany(condition => ConvertCondition(condition, semanticModel)).Select(condition =>
+                SyntaxFactory.Argument(
+                        SyntaxFactory.ParenthesizedLambdaExpression(condition)
+                            .WithArrowToken(SyntaxFactory.Token(
+                                SyntaxFactory.TriviaList(SyntaxFactory.Space),
+                                SyntaxKind.EqualsGreaterThanToken,
+                                SyntaxFactory.TriviaList(SyntaxFactory.Space))))
+                    .WithLeadingTrivia(argumentIndentation))
+                .ToList();
+
+            var separators = Enumerable.Repeat(
+                SyntaxFactory.Token(SyntaxKind.CommaToken).WithTrailingTrivia(endOfLine),
+                arguments.Count - 1);
+
+            return SyntaxFactory.InvocationExpression(
+                    SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        SyntaxFactory.ThisExpression(),
+                        SyntaxFactory.IdentifierName("ShouldSatisfyAllConditions")),
+                    SyntaxFactory.ArgumentList(
+                        SyntaxFactory.Token(SyntaxKind.OpenParenToken).WithTrailingTrivia(endOfLine),
+                        SyntaxFactory.SeparatedList(arguments, separators),
+                        SyntaxFactory.Token(SyntaxKind.CloseParenToken)))
+                .WithLeadingTrivia(invocation.GetLeadingTrivia())
+                .WithTrailingTrivia(invocation.GetTrailingTrivia());
+        }
+
+        // An inner assert becomes one condition per Shouldly call, so `.And.` chains split into separate conditions.
+        // Anything that doesn't convert to plain calls (e.g. a conditional constraint's if/else) is kept as-is.
+        private IEnumerable<ExpressionSyntax> ConvertCondition(ExpressionSyntax condition, SemanticModel semanticModel)
+        {
+            if (!(condition is InvocationExpressionSyntax inner) ||
+                !NUnitToShouldlyAnalyzer.IsReported(inner, semanticModel, CancellationToken.None))
+            {
+                return new[] { condition.WithoutTrivia() };
+            }
+
+            if (TryParseAssertThat(inner, semanticModel, out var actual, out var constraint, out var message))
+            {
+                var messageExpression = message == null ? null : MessageExpression(message, semanticModel);
+                var statements = ConvertConstraint(inner, actual, constraint, messageExpression, semanticModel, inner.SpanStart);
+                return statements != null && statements.All(s => s is ExpressionStatementSyntax)
+                    ? statements.Cast<ExpressionStatementSyntax>().Select(s => s.Expression.WithoutTrivia()).ToArray()
+                    : new[] { condition.WithoutTrivia() };
+            }
+
+            var converted = ParenthesiseReceiver(ConvertToShouldly(inner, semanticModel, inner.SpanStart));
+            return new[] { (converted ?? condition).WithoutTrivia() };
+        }
+
+        // NUnit's string containment is case-sensitive, but Shouldly's string ShouldContain/ShouldNotContain
+        // default to Case.Insensitive. The collection overloads have no Case parameter, so only add it
+        // when the receiver is a string.
+        private static ArgumentListSyntax ContainArgumentList(ExpressionSyntax receiver, ArgumentSyntax expected, SemanticModel semanticModel, int position)
+        {
+            if (!IsString(receiver, semanticModel, position))
+            {
+                return SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(expected));
+            }
+
+            return SyntaxFactory.ArgumentList(
+                SyntaxFactory.SeparatedList(new[]
+                {
+                    expected,
+                    SyntaxFactory.Argument(
+                        SyntaxFactory.MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            SyntaxFactory.IdentifierName("Case"),
+                            SyntaxFactory.IdentifierName("Sensitive")))
+                }));
+        }
+
+        private static readonly ImmutableDictionary<string, string> ComparisonConstraints =
+            ImmutableDictionary.CreateRange(new[]
+            {
+                new System.Collections.Generic.KeyValuePair<string, string>("GreaterThan", "ShouldBeGreaterThan"),
+                new System.Collections.Generic.KeyValuePair<string, string>("GreaterThanOrEqualTo", "ShouldBeGreaterThanOrEqualTo"),
+                new System.Collections.Generic.KeyValuePair<string, string>("LessThan", "ShouldBeLessThan"),
+                new System.Collections.Generic.KeyValuePair<string, string>("LessThanOrEqualTo", "ShouldBeLessThanOrEqualTo"),
+            });
+
+        // Matches Is.GreaterThan(x) and Has.Length/Has.Count.GreaterThan(x) (and the other comparisons).
+        // For the Has.* forms the property moves onto the actual value, e.g. actual.Length.ShouldBeLessThan(x).
+        private static bool TryGetComparison(
+            ExpressionSyntax actualExpression,
+            ExpressionSyntax constraint,
+            out ExpressionSyntax actual,
+            out string shouldlyMethod,
+            out ArgumentSyntax expected)
+        {
+            actual = null;
+            shouldlyMethod = null;
+            expected = null;
+
+            if (!(constraint is InvocationExpressionSyntax inv) ||
+                !(inv.Expression is MemberAccessExpressionSyntax ma) ||
+                inv.ArgumentList.Arguments.Count != 1 ||
+                !ComparisonConstraints.TryGetValue(ma.Name.Identifier.Text, out shouldlyMethod))
+            {
+                return false;
+            }
+
+            switch (ma.Expression)
+            {
+                case IdentifierNameSyntax isName when isName.Identifier.Text == "Is":
+                    actual = actualExpression;
+                    break;
+                case MemberAccessExpressionSyntax hasProperty when
+                    hasProperty.Expression is IdentifierNameSyntax hasName &&
+                    hasName.Identifier.Text == "Has" &&
+                    (hasProperty.Name.Identifier.Text == "Length" || hasProperty.Name.Identifier.Text == "Count"):
+                    actual = SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        ParenthesiseIfNeeded(actualExpression),
+                        SyntaxFactory.IdentifierName(hasProperty.Name.Identifier.Text));
+                    break;
+                default:
+                    return false;
+            }
+
+            expected = inv.ArgumentList.Arguments[0];
+            return true;
+        }
+
     }
 }

@@ -1,4 +1,6 @@
 ﻿using System.Collections.Immutable;
+using System.Linq;
+using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -29,33 +31,37 @@ namespace Shouldly.FromAssert
             context.RegisterSyntaxNodeAction(AnalyzeNode, SyntaxKind.InvocationExpression);
         }
 
+        private static readonly ImmutableHashSet<string> NUnitAssertTypes = ImmutableHashSet.Create(
+            "NUnit.Framework.Assert",
+            "NUnit.Framework.StringAssert",
+            "NUnit.Framework.CollectionAssert");
+
         private static void AnalyzeNode(SyntaxNodeAnalysisContext context)
         {
             var invocation = (InvocationExpressionSyntax)context.Node;
-            string methodName = null;
-            string assertClass = null;
 
-            if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
-            {
-                methodName = memberAccess.Name.Identifier.Text;
-                if (memberAccess.Expression is IdentifierNameSyntax identifier)
-                {
-                    assertClass = identifier.Identifier.Text;
-                }
-            }
-            else if (invocation.Expression is IdentifierNameSyntax identifierName)
-            {
-                methodName = identifierName.Identifier.Text;
-            }
-
-            if (methodName == null) return;
-
-            if (assertClass == "Assert" || assertClass == "StringAssert" || assertClass == "CollectionAssert" ||
-                (assertClass == null && methodName.StartsWith("Assert")))
+            if (IsReported(invocation, context.SemanticModel, context.CancellationToken))
             {
                 var diagnostic = Diagnostic.Create(Rule, invocation.GetLocation());
                 context.ReportDiagnostic(diagnostic);
             }
+        }
+
+        internal static bool IsReported(InvocationExpressionSyntax invocation, SemanticModel semanticModel, CancellationToken cancellationToken)
+        {
+            var symbolInfo = semanticModel.GetSymbolInfo(invocation, cancellationToken);
+            var method = symbolInfo.Symbol as IMethodSymbol
+                         ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
+            if (method == null) return false;
+
+            var containingType = method.ContainingType?.ToDisplayString();
+            if (containingType == null || !NUnitAssertTypes.Contains(containingType)) return false;
+
+            // Only report Assert.Multiple when the fix can turn it into ShouldSatisfyAllConditions.
+            if (method.Name == "Multiple" && containingType == "NUnit.Framework.Assert" &&
+                AssertMultiple.GetConditions(invocation) == null) return false;
+
+            return true;
         }
     }
 }
