@@ -47,7 +47,7 @@ namespace Shouldly.FromAssert
 
             if (invocation == null) return document;
 
-            var newInvocation = ConvertToShouldly(invocation);
+            var newInvocation = ParenthesiseReceiver(ConvertToShouldly(invocation));
 
             if (newInvocation != null)
             {
@@ -56,6 +56,44 @@ namespace Shouldly.FromAssert
             }
 
             return document;
+        }
+
+        // `x.ShouldBe(...)` binds to the whole receiver only when the receiver is a primary expression.
+        // Anything else (await, ?., binary, conditional, cast, ...) must be wrapped, otherwise the
+        // Should call binds to the last operand: `await t.ShouldBe(1)` fails to compile and
+        // `a?.B.ShouldBe(1)` silently skips the assertion when `a` is null.
+        private static ExpressionSyntax ParenthesiseReceiver(ExpressionSyntax converted)
+        {
+            if (converted is InvocationExpressionSyntax shouldInvocation &&
+                shouldInvocation.Expression is MemberAccessExpressionSyntax shouldAccess &&
+                NeedsParentheses(shouldAccess.Expression))
+            {
+                var receiver = shouldAccess.Expression;
+                var parenthesised = SyntaxFactory.ParenthesizedExpression(receiver.WithoutTrivia())
+                    .WithTriviaFrom(receiver);
+                return shouldInvocation.WithExpression(shouldAccess.WithExpression(parenthesised));
+            }
+
+            return converted;
+        }
+
+        private static bool NeedsParentheses(ExpressionSyntax receiver)
+        {
+            switch (receiver)
+            {
+                case SimpleNameSyntax _:
+                case MemberAccessExpressionSyntax _:
+                case InvocationExpressionSyntax _:
+                case ElementAccessExpressionSyntax _:
+                case ParenthesizedExpressionSyntax _:
+                case LiteralExpressionSyntax _:
+                case ThisExpressionSyntax _:
+                case PredefinedTypeSyntax _:
+                case TypeOfExpressionSyntax _:
+                    return false;
+                default:
+                    return true;
+            }
         }
 
         private ExpressionSyntax ConvertToShouldly(InvocationExpressionSyntax invocation)

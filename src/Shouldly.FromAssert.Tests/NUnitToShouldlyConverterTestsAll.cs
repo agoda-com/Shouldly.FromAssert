@@ -389,6 +389,36 @@ public class NUnitToShouldlyConverterTestsAll
             StartColumn = 13,
             EndColumn = 47
         }).SetName("Assert.That with Is.Empty");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "var contestant = new { MediaType = \"image/png\" };",
+            NUnitAssertion = "Assert.That(contestant?.MediaType, Is.EqualTo(\"image/png\"));",
+            ShouldlyAssertion = "(contestant?.MediaType).ShouldBe(\"image/png\");",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 72
+        }).SetName("Assert.That with null-conditional receiver");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "var contestant = 1337;",
+            NUnitAssertion = "Assert.AreEqual(true, contestant != 0 && contestant > 1000);",
+            ShouldlyAssertion = "(contestant != 0 && contestant > 1000).ShouldBe(true);",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 72
+        }).SetName("Assert.AreEqual with binary receiver");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "var contestant = 1337;",
+            NUnitAssertion = "Assert.IsTrue(contestant > 0 ? contestant < 2000 : false);",
+            ShouldlyAssertion = "(contestant > 0 ? contestant < 2000 : false).ShouldBeTrue();",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 70
+        }).SetName("Assert.IsTrue with conditional receiver");
     }
 
 
@@ -437,6 +467,50 @@ namespace TestNamespace
         var compilerDiagnostics = codeFixTest.CompilerDiagnostics;
 
         // Add any additional assertions here if needed
+    }
+
+    [Test]
+    public async Task AwaitReceiver_IsParenthesised()
+    {
+        var test = @"
+using NUnit.Framework;using System.Threading.Tasks;
+using Shouldly;
+namespace TestNamespace
+{
+    public class TestClass
+    {
+        [Test]
+        public async Task TestMethod()
+        {
+            Assert.That(await GetStatusAsync(), Is.EqualTo(""Ordered""));
+        }
+
+        private static Task<string> GetStatusAsync() => Task.FromResult(""Ordered"");
+    }
+}";
+
+        var expected = @"
+using NUnit.Framework;using System.Threading.Tasks;
+using Shouldly;
+namespace TestNamespace
+{
+    public class TestClass
+    {
+        [Test]
+        public async Task TestMethod()
+        {
+            (await GetStatusAsync()).ShouldBe(""Ordered"");
+        }
+
+        private static Task<string> GetStatusAsync() => Task.FromResult(""Ordered"");
+    }
+}";
+
+        await new CodeFixTest(test, expected,
+                CSharpAnalyzerVerifier<NUnitToShouldlyAnalyzer, NUnitVerifier>
+                    .Diagnostic(NUnitToShouldlyAnalyzer.DiagnosticId)
+                    .WithSpan(11, 13, 11, 71))
+            .RunAsync(CancellationToken.None);
     }
 
     private class
