@@ -58,7 +58,8 @@ namespace Shouldly.FromAssert
             if (containingType == null || !NUnitAssertTypes.Contains(containingType)) return false;
 
             // Only report Assert.Multiple when the fix can turn it into ShouldSatisfyAllConditions.
-            if (AssertMultiple.IsAssertMultiple(invocation) && AssertMultiple.GetConditions(invocation) == null) return false;
+            if (method.Name == "Multiple" && containingType == "NUnit.Framework.Assert" &&
+                AssertMultiple.GetConditions(invocation) == null) return false;
 
             return true;
         }

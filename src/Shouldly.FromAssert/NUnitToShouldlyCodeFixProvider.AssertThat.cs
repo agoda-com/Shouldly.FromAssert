@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -319,13 +320,14 @@ namespace Shouldly.FromAssert
             int position)
         {
             var actual = invocation.ArgumentList.Arguments[0].Expression;
-            var segments = FlattenConstraint(invocation.ArgumentList.Arguments[1].Expression);
+            var segments = FlattenConstraint(Unparenthesize(invocation.ArgumentList.Arguments[1].Expression));
             if (segments == null) return null;
 
             var shape = string.Join(".", segments.Select(s => s.Arguments == null ? s.Name : s.Name + "()"));
             var constraintArguments = segments[segments.Count - 1].Arguments?.Arguments
                                       ?? default(SeparatedSyntaxList<ArgumentSyntax>);
             var expected = constraintArguments.Count > 0 ? constraintArguments[0].Expression : null;
+            var item = ItemName(expected, semanticModel, position);
 
             switch (shape)
             {
@@ -366,28 +368,28 @@ namespace Shouldly.FromAssert
                             .WithNameColon(SyntaxFactory.NameColon("ignoreOrder")));
                 case "Is.All.EqualTo()":
                 case "Has.All.EqualTo()":
-                    return Should(actual, "ShouldAllBe", ItemLambda(ItemEquals(expected, semanticModel, position)));
+                    return Should(actual, "ShouldAllBe", ItemLambda(item, ItemEquals(item, expected, semanticModel, position)));
                 case "Is.SameAs()":
                     return Should(actual, "ShouldBeSameAs", expected);
                 case "Is.Not.SameAs()":
                     return Should(actual, "ShouldNotBeSameAs", expected);
                 case "Is.All.Null":
                 case "Has.All.Null":
-                    return Should(actual, "ShouldAllBe", ItemLambda(SyntaxFactory.BinaryExpression(
-                        SyntaxKind.EqualsExpression, Item(), Literal(SyntaxKind.NullLiteralExpression))));
+                    return Should(actual, "ShouldAllBe", ItemLambda(item, SyntaxFactory.BinaryExpression(
+                        SyntaxKind.EqualsExpression, item, Literal(SyntaxKind.NullLiteralExpression))));
                 case "Is.All.True":
                 case "Has.All.True":
-                    return Should(actual, "ShouldAllBe", ItemLambda(Item()));
+                    return Should(actual, "ShouldAllBe", ItemLambda(item, item));
                 case "Is.All.False":
                 case "Has.All.False":
                     return Should(actual, "ShouldAllBe", ItemLambda(
-                        SyntaxFactory.PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, Item())));
+                        item, SyntaxFactory.PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, item)));
                 case "Is.All.Matches()":
                 case "Has.All.Matches()":
-                    var allPredicate = AsPredicateExpression(expected);
+                    var allPredicate = AsPredicateExpression(item, expected);
                     return allPredicate == null ? null : Should(actual, "ShouldAllBe", allPredicate);
                 case "Has.None.Matches()":
-                    var nonePredicate = AsPredicateExpression(expected);
+                    var nonePredicate = AsPredicateExpression(item, expected);
                     return nonePredicate == null ? null : Should(actual, "ShouldNotContain", nonePredicate);
                 case "Is.InRange()" when constraintArguments.Count == 2:
                     return Should(actual, "ShouldBeInRange", expected, constraintArguments[1].Expression);
@@ -455,14 +457,29 @@ namespace Shouldly.FromAssert
                 SyntaxFactory.IdentifierName(type),
                 SyntaxFactory.IdentifierName(member));
 
-        private static IdentifierNameSyntax Item() => SyntaxFactory.IdentifierName("item");
+        // The lambda parameter must not capture a name the expected value refers to:
+        // `Has.All.EqualTo(item)` would otherwise become the tautology `item => object.Equals(item, item)`.
+        private static IdentifierNameSyntax ItemName(ExpressionSyntax expected, SemanticModel semanticModel, int position)
+        {
+            var referenced = expected?.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>()
+                                 .Select(identifier => identifier.Identifier.Text)
+                                 .ToImmutableHashSet()
+                             ?? ImmutableHashSet<string>.Empty;
 
-        private static SimpleLambdaExpressionSyntax ItemLambda(ExpressionSyntax body) =>
-            SyntaxFactory.SimpleLambdaExpression(SyntaxFactory.Parameter(SyntaxFactory.Identifier("item")), body);
+            for (var suffix = 0; ; suffix++)
+            {
+                var name = suffix == 0 ? "item" : "item" + suffix;
+                if (!referenced.Contains(name) && semanticModel.LookupSymbols(position, name: name).IsEmpty)
+                    return SyntaxFactory.IdentifierName(name);
+            }
+        }
+
+        private static SimpleLambdaExpressionSyntax ItemLambda(IdentifierNameSyntax item, ExpressionSyntax body) =>
+            SyntaxFactory.SimpleLambdaExpression(SyntaxFactory.Parameter(item.Identifier), body);
 
         // `==` keeps NUnit's numeric equality across types (1 == 1L); anything else compares with object.Equals
         // so reference types aren't silently switched to reference equality.
-        private static ExpressionSyntax ItemEquals(ExpressionSyntax expected, SemanticModel semanticModel, int position)
+        private static ExpressionSyntax ItemEquals(IdentifierNameSyntax item, ExpressionSyntax expected, SemanticModel semanticModel, int position)
         {
             var type = TypeOf(expected, semanticModel, position);
             var usesOperator = type == null ||
@@ -470,7 +487,7 @@ namespace Shouldly.FromAssert
                                (type.SpecialType >= SpecialType.System_Boolean && type.SpecialType <= SpecialType.System_String);
 
             return usesOperator
-                ? SyntaxFactory.BinaryExpression(SyntaxKind.EqualsExpression, Item(), expected)
+                ? SyntaxFactory.BinaryExpression(SyntaxKind.EqualsExpression, item, expected)
                 : (ExpressionSyntax) SyntaxFactory.InvocationExpression(
                     SyntaxFactory.MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
@@ -478,13 +495,13 @@ namespace Shouldly.FromAssert
                         SyntaxFactory.IdentifierName("Equals")),
                     SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(new[]
                     {
-                        SyntaxFactory.Argument(Item()),
+                        SyntaxFactory.Argument(item),
                         SyntaxFactory.Argument(expected)
                     })));
         }
 
         // Shouldly takes an Expression<Func<T, bool>>, so a statement-bodied lambda can't be passed through.
-        private static ExpressionSyntax AsPredicateExpression(ExpressionSyntax predicate)
+        private static ExpressionSyntax AsPredicateExpression(IdentifierNameSyntax item, ExpressionSyntax predicate)
         {
             switch (predicate)
             {
@@ -493,20 +510,21 @@ namespace Shouldly.FromAssert
                 case null:
                     return null;
                 default:
-                    return ItemLambda(SyntaxFactory.InvocationExpression(
+                    return ItemLambda(item, SyntaxFactory.InvocationExpression(
                         predicate,
-                        SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.Argument(Item())))));
+                        SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.Argument(item)))));
             }
         }
 
         // Has.Count reads Count by reflection, which for an array is Length.
         private static ExpressionSyntax CountOf(ExpressionSyntax actual, SemanticModel semanticModel, int position)
         {
+            var receiver = ParenthesiseIfNeeded(actual);
             foreach (var property in new[] { "Count", "Length" })
             {
                 var access = SyntaxFactory.MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    actual,
+                    receiver,
                     SyntaxFactory.IdentifierName(property));
                 var symbol = semanticModel
                     .GetSpeculativeSymbolInfo(position, access, SpeculativeBindingOption.BindAsExpression)

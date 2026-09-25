@@ -13,12 +13,22 @@ namespace Shouldly.FromAssert
     /// </summary>
     internal static class AssertMultiple
     {
+        /// <summary>
+        /// Matches <c>Assert.Multiple</c>, <c>NUnit.Framework.Assert.Multiple</c> and <c>Multiple</c> under
+        /// <c>using static NUnit.Framework.Assert</c>. Only called on invocations the analyzer has already bound
+        /// to an NUnit assert type, so the name alone identifies the method.
+        /// </summary>
         public static bool IsAssertMultiple(InvocationExpressionSyntax invocation)
         {
-            return invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                   memberAccess.Name.Identifier.Text == "Multiple" &&
-                   memberAccess.Expression is IdentifierNameSyntax identifier &&
-                   identifier.Identifier.Text == "Assert";
+            switch (invocation.Expression)
+            {
+                case MemberAccessExpressionSyntax memberAccess:
+                    return memberAccess.Name.Identifier.Text == "Multiple";
+                case IdentifierNameSyntax identifier:
+                    return identifier.Identifier.Text == "Multiple";
+                default:
+                    return false;
+            }
         }
 
         /// <summary>

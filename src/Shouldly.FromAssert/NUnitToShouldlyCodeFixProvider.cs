@@ -1,4 +1,5 @@
-﻿using System.Collections.Immutable;
+﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
 using System.Threading;
@@ -72,18 +73,16 @@ namespace Shouldly.FromAssert
         // `a?.B.ShouldBe(1)` silently skips the assertion when `a` is null.
         private static ExpressionSyntax ParenthesiseReceiver(ExpressionSyntax converted)
         {
-            if (converted is InvocationExpressionSyntax shouldInvocation &&
-                shouldInvocation.Expression is MemberAccessExpressionSyntax shouldAccess &&
-                NeedsParentheses(shouldAccess.Expression))
-            {
-                var receiver = shouldAccess.Expression;
-                var parenthesised = SyntaxFactory.ParenthesizedExpression(receiver.WithoutTrivia())
-                    .WithTriviaFrom(receiver);
-                return shouldInvocation.WithExpression(shouldAccess.WithExpression(parenthesised));
-            }
-
-            return converted;
+            return converted is InvocationExpressionSyntax shouldInvocation &&
+                   shouldInvocation.Expression is MemberAccessExpressionSyntax shouldAccess
+                ? shouldInvocation.WithExpression(shouldAccess.WithExpression(ParenthesiseIfNeeded(shouldAccess.Expression)))
+                : converted;
         }
+
+        private static ExpressionSyntax ParenthesiseIfNeeded(ExpressionSyntax expression) =>
+            NeedsParentheses(expression)
+                ? SyntaxFactory.ParenthesizedExpression(expression.WithoutTrivia()).WithTriviaFrom(expression)
+                : expression;
 
         private static bool NeedsParentheses(ExpressionSyntax receiver)
         {
@@ -131,7 +130,7 @@ namespace Shouldly.FromAssert
 
             switch (methodName)
             {
-                case "Multiple" when assertClass == "Assert":
+                case "Multiple" when AssertMultiple.IsAssertMultiple(invocation):
                     return ConvertAssertMultiple(invocation, semanticModel);
 
                 case "DoesNotContain" when assertClass == "CollectionAssert":
@@ -757,18 +756,19 @@ namespace Shouldly.FromAssert
             var indentation = invocation.GetLeadingTrivia().LastOrDefault(t => t.IsKind(SyntaxKind.WhitespaceTrivia));
             var argumentIndentation = SyntaxFactory.Whitespace(indentation.ToString() + "    ");
 
-            var arguments = conditions.Select(condition =>
+            var arguments = conditions.SelectMany(condition => ConvertCondition(condition, semanticModel)).Select(condition =>
                 SyntaxFactory.Argument(
-                        SyntaxFactory.ParenthesizedLambdaExpression(ConvertCondition(condition, semanticModel))
+                        SyntaxFactory.ParenthesizedLambdaExpression(condition)
                             .WithArrowToken(SyntaxFactory.Token(
                                 SyntaxFactory.TriviaList(SyntaxFactory.Space),
                                 SyntaxKind.EqualsGreaterThanToken,
                                 SyntaxFactory.TriviaList(SyntaxFactory.Space))))
-                    .WithLeadingTrivia(argumentIndentation));
+                    .WithLeadingTrivia(argumentIndentation))
+                .ToList();
 
             var separators = Enumerable.Repeat(
                 SyntaxFactory.Token(SyntaxKind.CommaToken).WithTrailingTrivia(endOfLine),
-                conditions.Count - 1);
+                arguments.Count - 1);
 
             return SyntaxFactory.InvocationExpression(
                     SyntaxFactory.MemberAccessExpression(
@@ -783,13 +783,27 @@ namespace Shouldly.FromAssert
                 .WithTrailingTrivia(invocation.GetTrailingTrivia());
         }
 
-        private ExpressionSyntax ConvertCondition(ExpressionSyntax condition, SemanticModel semanticModel)
+        // An inner assert becomes one condition per Shouldly call, so `.And.` chains split into separate conditions.
+        // Anything that doesn't convert to plain calls (e.g. a conditional constraint's if/else) is kept as-is.
+        private IEnumerable<ExpressionSyntax> ConvertCondition(ExpressionSyntax condition, SemanticModel semanticModel)
         {
-            var converted = condition is InvocationExpressionSyntax inner && NUnitToShouldlyAnalyzer.IsReported(inner, semanticModel, CancellationToken.None)
-                ? ParenthesiseReceiver(ConvertToShouldly(inner, semanticModel, inner.SpanStart))
-                : null;
+            if (!(condition is InvocationExpressionSyntax inner) ||
+                !NUnitToShouldlyAnalyzer.IsReported(inner, semanticModel, CancellationToken.None))
+            {
+                return new[] { condition.WithoutTrivia() };
+            }
 
-            return (converted ?? condition).WithoutTrivia();
+            if (TryParseAssertThat(inner, semanticModel, out var actual, out var constraint, out var message))
+            {
+                var messageExpression = message == null ? null : MessageExpression(message, semanticModel);
+                var statements = ConvertConstraint(inner, actual, constraint, messageExpression, semanticModel, inner.SpanStart);
+                return statements != null && statements.All(s => s is ExpressionStatementSyntax)
+                    ? statements.Cast<ExpressionStatementSyntax>().Select(s => s.Expression.WithoutTrivia()).ToArray()
+                    : new[] { condition.WithoutTrivia() };
+            }
+
+            var converted = ParenthesiseReceiver(ConvertToShouldly(inner, semanticModel, inner.SpanStart));
+            return new[] { (converted ?? condition).WithoutTrivia() };
         }
 
         // NUnit's string containment is case-sensitive, but Shouldly's string ShouldContain/ShouldNotContain
@@ -866,14 +880,5 @@ namespace Shouldly.FromAssert
             return true;
         }
 
-        private static ExpressionSyntax ParenthesiseIfNeeded(ExpressionSyntax expression) =>
-            expression is IdentifierNameSyntax ||
-            expression is MemberAccessExpressionSyntax ||
-            expression is InvocationExpressionSyntax ||
-            expression is ElementAccessExpressionSyntax ||
-            expression is ParenthesizedExpressionSyntax ||
-            expression is ThisExpressionSyntax
-                ? expression
-                : SyntaxFactory.ParenthesizedExpression(expression);
     }
 }

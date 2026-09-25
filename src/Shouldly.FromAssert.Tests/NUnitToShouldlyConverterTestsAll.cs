@@ -572,6 +572,46 @@ public class NUnitToShouldlyConverterTestsAll
 
         yield return new TestCaseData(new TestCase
         {
+            SetupCode = "List<int> contestants = null; var fallback = new List<int> { 1, 3, 3, 7 };",
+            NUnitAssertion = "Assert.That(contestants ?? fallback, Has.Count.EqualTo(4));",
+            ShouldlyAssertion = "(contestants ?? fallback).Count.ShouldBe(4);",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 71
+        }).SetName("Assert.That with Has.Count.EqualTo on a coalesce expression");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "var item = new Version(1, 0); var contestants = new List<Version> { item };",
+            NUnitAssertion = "Assert.That(contestants, Has.All.EqualTo(item));",
+            ShouldlyAssertion = "contestants.ShouldAllBe(item1 => object.Equals(item1, item));",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 60
+        }).SetName("Assert.That with Has.All.EqualTo does not shadow a local named item");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "string contestant = null;",
+            NUnitAssertion = "Assert.That(contestant, (Is.Null));",
+            ShouldlyAssertion = "contestant.ShouldBeNull();",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 47
+        }).SetName("Assert.That with a parenthesised constraint");
+
+        yield return new TestCaseData(new TestCase
+        {
+            SetupCode = "",
+            NUnitAssertion = "Assert.That(\"1337\", Has.Length.GreaterThan(3));",
+            ShouldlyAssertion = "\"1337\".Length.ShouldBeGreaterThan(3);",
+            Line = 12,
+            StartColumn = 13,
+            EndColumn = 59
+        }).SetName("Assert.That with Has.Length.GreaterThan on a literal is not parenthesised");
+
+        yield return new TestCaseData(new TestCase
+        {
             SetupCode = "var greeting = \"Hello, World!\";",
             NUnitAssertion = "Assert.That(greeting, Does.Not.Contain(\"world\"));",
             ShouldlyAssertion = "greeting.ShouldNotContain(\"world\", Case.Sensitive);",
@@ -1232,6 +1272,36 @@ namespace TestNamespace
         await analyzerTest.RunAsync(CancellationToken.None);
     }
 
+    [Test]
+    public async Task UsingStaticMultipleInStaticMethod_IsNotFlagged()
+    {
+        var test = @"
+using NUnit.Framework;
+using static NUnit.Framework.Assert;
+namespace TestNamespace
+{
+    public class TestClass
+    {
+        [Test]
+        public static void TestMethod()
+        {
+            Multiple(() =>
+            {
+                [|Assert.That(1337, Is.EqualTo(1337))|];
+            });
+        }
+    }
+}";
+
+        var analyzerTest = new CSharpAnalyzerTest<NUnitToShouldlyAnalyzer, NUnitVerifier>
+        {
+            TestCode = test,
+            ReferenceAssemblies = CodeFixTest.References
+        };
+
+        await analyzerTest.RunAsync(CancellationToken.None);
+    }
+
     private static IEnumerable<TestCaseData> AssertMultipleTestCases()
     {
         yield return new TestCaseData(
@@ -1269,6 +1339,33 @@ namespace TestNamespace
             this.ShouldSatisfyAllConditions(
                 () => contestant.ShouldBe(1337));"
         ).SetName("Assert.Multiple with an expression-bodied lambda");
+
+        yield return new TestCaseData(
+            @"var contestant = 1337;
+            [|Assert.Multiple(() =>
+            {
+                [|Assert.That(contestant, Is.EqualTo(1337), ""leet"")|];
+                [|Assert.That(contestant > 1000)|];
+                [|Assert.That(contestant, Is.GreaterThan(1000).And.LessThan(2000))|];
+            })|];",
+            @"var contestant = 1337;
+            this.ShouldSatisfyAllConditions(
+                () => contestant.ShouldBe(1337, ""leet""),
+                () => (contestant > 1000).ShouldBeTrue(),
+                () => contestant.ShouldBeGreaterThan(1000),
+                () => contestant.ShouldBeLessThan(2000));"
+        ).SetName("Assert.Multiple converts inner asserts with a message, a bare bool and an And chain");
+
+        yield return new TestCaseData(
+            @"var contestant = 1337;
+            [|NUnit.Framework.Assert.Multiple(() =>
+            {
+                [|Assert.That(contestant, Is.EqualTo(1337))|];
+            })|];",
+            @"var contestant = 1337;
+            this.ShouldSatisfyAllConditions(
+                () => contestant.ShouldBe(1337));"
+        ).SetName("Assert.Multiple fully qualified");
     }
 
     [Test]
@@ -1311,6 +1408,15 @@ namespace TestNamespace
                 [|Assert.That(contestant, Is.EqualTo(1337))|];
             });"
         ).SetName("Assert.Multiple in a static method is not reported");
+
+        yield return new TestCaseData(
+            "public static void TestMethod()",
+            @"var contestant = 1337;
+            NUnit.Framework.Assert.Multiple(() =>
+            {
+                [|Assert.That(contestant, Is.EqualTo(1337))|];
+            });"
+        ).SetName("Fully qualified Assert.Multiple in a static method is not reported");
     }
 
     [Test]
