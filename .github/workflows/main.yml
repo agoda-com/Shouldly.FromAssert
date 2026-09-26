@@ -91,6 +91,8 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     steps:
     - name: Create Draft Release
       id: create_release
