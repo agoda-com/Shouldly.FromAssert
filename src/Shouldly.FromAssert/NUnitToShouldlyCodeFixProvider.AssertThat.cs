@@ -164,7 +164,7 @@ namespace Shouldly.FromAssert
             SemanticModel semanticModel,
             int position)
         {
-            if (!(ParenthesiseReceiver(ConvertToShouldly(invocation, semanticModel, position)) is InvocationExpressionSyntax converted))
+            if (!(PrepareReceiver(ConvertToShouldly(invocation, semanticModel, position), semanticModel, position) is InvocationExpressionSyntax converted))
                 return null;
 
             if (message != null)
