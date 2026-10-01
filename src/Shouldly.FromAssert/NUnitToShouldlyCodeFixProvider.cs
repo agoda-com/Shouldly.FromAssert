@@ -802,14 +802,18 @@ namespace Shouldly.FromAssert
             var indentation = invocation.GetLeadingTrivia().LastOrDefault(t => t.IsKind(SyntaxKind.WhitespaceTrivia));
             var argumentIndentation = SyntaxFactory.Whitespace(indentation.ToString() + "    ");
 
-            var arguments = conditions.SelectMany(condition => ConvertCondition(condition, semanticModel)).Select(condition =>
-                SyntaxFactory.Argument(
-                        SyntaxFactory.ParenthesizedLambdaExpression(condition)
-                            .WithArrowToken(SyntaxFactory.Token(
-                                SyntaxFactory.TriviaList(SyntaxFactory.Space),
-                                SyntaxKind.EqualsGreaterThanToken,
-                                SyntaxFactory.TriviaList(SyntaxFactory.Space))))
-                    .WithLeadingTrivia(argumentIndentation))
+            var arguments = conditions
+                .SelectMany(condition => ConvertCondition(condition, semanticModel)
+                    .Select(converted => (Expression: converted, Position: condition.SpanStart)))
+                .Select((condition, index) =>
+                    SyntaxFactory.Argument(
+                            ConditionLambda(condition.Expression, index == 0 &&
+                                IsString(condition.Expression, semanticModel, condition.Position))
+                                .WithArrowToken(SyntaxFactory.Token(
+                                    SyntaxFactory.TriviaList(SyntaxFactory.Space),
+                                    SyntaxKind.EqualsGreaterThanToken,
+                                    SyntaxFactory.TriviaList(SyntaxFactory.Space))))
+                        .WithLeadingTrivia(argumentIndentation))
                 .ToList();
 
             var separators = Enumerable.Repeat(
@@ -828,6 +832,17 @@ namespace Shouldly.FromAssert
                 .WithLeadingTrivia(invocation.GetLeadingTrivia())
                 .WithTrailingTrivia(invocation.GetTrailingTrivia());
         }
+
+        // A first condition that returns a string (`name.ShouldNotBeNull()`) converts to Func<string?> and binds to
+        // ShouldSatisfyAllConditions(object?, Func<string?>?, params Action[]), which Shouldly marks obsolete as an
+        // error (CS0619). A block body leaves the lambda only convertible to Action (#40).
+        private static ParenthesizedLambdaExpressionSyntax ConditionLambda(ExpressionSyntax condition, bool returnsString) =>
+            returnsString
+                ? SyntaxFactory.ParenthesizedLambdaExpression(
+                    SyntaxFactory.Block(SyntaxFactory.ExpressionStatement(condition))
+                        .WithOpenBraceToken(SyntaxFactory.Token(SyntaxKind.OpenBraceToken).WithTrailingTrivia(SyntaxFactory.Space))
+                        .WithCloseBraceToken(SyntaxFactory.Token(SyntaxKind.CloseBraceToken).WithLeadingTrivia(SyntaxFactory.Space)))
+                : SyntaxFactory.ParenthesizedLambdaExpression(condition);
 
         // ShouldSatisfyAllConditions only takes Actions, so Assert.Multiple(async () => { Assert.That(await x, ...); })
         // first becomes `var y = await x; Assert.Multiple(() => { Assert.That(y, ...); });`, and that converts as usual
