@@ -56,7 +56,7 @@ namespace Shouldly.FromAssert
                 return document.WithSyntaxRoot(newRoot);
             }
 
-            var newInvocation = ParenthesiseReceiver(ConvertToShouldly(invocation, semanticModel, invocation.SpanStart));
+            var newInvocation = PrepareReceiver(ConvertToShouldly(invocation, semanticModel, invocation.SpanStart), semanticModel, invocation.SpanStart);
 
             if (newInvocation != null)
             {
@@ -65,6 +65,39 @@ namespace Shouldly.FromAssert
             }
 
             return document;
+        }
+
+        private static ExpressionSyntax PrepareReceiver(ExpressionSyntax converted, SemanticModel semanticModel, int position) =>
+            ChainShouldNotBeNull(ParenthesiseReceiver(converted), semanticModel, position);
+
+        // Shouldly's string ShouldContain/ShouldStartWith/ShouldEndWith/ShouldMatch take a non-nullable `string actual`,
+        // so a `string?` receiver raises CS8604. NUnit's Does.Contain/StartWith/EndWith/Match all fail on null, so
+        // asserting non-null first is faithful: `x.ShouldNotBeNull().ShouldContain(...)`. ShouldNotContain is left
+        // alone because NUnit's Does.Not.Contain passes on null.
+        private static readonly ImmutableHashSet<string> NullRejectingStringAsserts =
+            ImmutableHashSet.Create("ShouldContain", "ShouldStartWith", "ShouldEndWith", "ShouldMatch");
+
+        private static ExpressionSyntax ChainShouldNotBeNull(ExpressionSyntax converted, SemanticModel semanticModel, int position)
+        {
+            if (!(converted is InvocationExpressionSyntax shouldInvocation) ||
+                !(shouldInvocation.Expression is MemberAccessExpressionSyntax shouldAccess) ||
+                !NullRejectingStringAsserts.Contains(shouldAccess.Name.Identifier.Text))
+                return converted;
+
+            var receiver = shouldAccess.Expression;
+            var typeInfo = semanticModel.GetSpeculativeTypeInfo(position, receiver, SpeculativeBindingOption.BindAsExpression);
+            if (typeInfo.Type?.SpecialType != SpecialType.System_String ||
+                typeInfo.Nullability.FlowState != NullableFlowState.MaybeNull)
+                return converted;
+
+            var notNull = SyntaxFactory.InvocationExpression(
+                SyntaxFactory.MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    receiver.WithoutTrivia(),
+                    SyntaxFactory.IdentifierName("ShouldNotBeNull")),
+                SyntaxFactory.ArgumentList());
+
+            return shouldInvocation.WithExpression(shouldAccess.WithExpression(notNull.WithTriviaFrom(receiver)));
         }
 
         // `x.ShouldBe(...)` binds to the whole receiver only when the receiver is a primary expression.
@@ -802,7 +835,7 @@ namespace Shouldly.FromAssert
                     : new[] { condition.WithoutTrivia() };
             }
 
-            var converted = ParenthesiseReceiver(ConvertToShouldly(inner, semanticModel, inner.SpanStart));
+            var converted = PrepareReceiver(ConvertToShouldly(inner, semanticModel, inner.SpanStart), semanticModel, inner.SpanStart);
             return new[] { (converted ?? condition).WithoutTrivia() };
         }
 
