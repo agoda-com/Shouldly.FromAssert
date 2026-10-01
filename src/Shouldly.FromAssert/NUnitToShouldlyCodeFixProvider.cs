@@ -448,9 +448,6 @@ namespace Shouldly.FromAssert
 
                     break;
                 case "Contains" when assertClass == "StringAssert":
-                case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "Contains":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -460,9 +457,6 @@ namespace Shouldly.FromAssert
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "Contains":
-                case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "Contains":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -660,9 +654,6 @@ namespace Shouldly.FromAssert
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "StartsWith" when assertClass == "StringAssert":
-                case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "StartsWith":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -672,9 +663,6 @@ namespace Shouldly.FromAssert
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
                 case "EndsWith" when assertClass == "StringAssert":
-                case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "EndsWith":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,

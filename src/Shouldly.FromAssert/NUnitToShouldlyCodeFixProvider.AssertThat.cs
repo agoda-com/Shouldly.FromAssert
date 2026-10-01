@@ -421,8 +421,25 @@ namespace Shouldly.FromAssert
                     return Should(actual, "ShouldBeSubsetOf", expected);
                 case "Is.All.Contain()":
                 case "Has.All.Contain()":
-                    return IsStringSequence(actual, semanticModel, position) && IsExpressionTreeSafe(expected)
+                case "Is.All.Contains()":
+                case "Has.All.Contains()":
+                    return AllStrings(actual, expected, semanticModel, position)
                         ? Should(actual, "ShouldAllBe", ItemLambda(item, Should(item, "Contains", expected)))
+                        : null;
+                // string.StartsWith(string) alone is culture-sensitive (CA1310), so the comparison is spelled out.
+                case "Is.All.StartsWith()":
+                case "Has.All.StartsWith()":
+                case "Is.All.StartWith()":
+                case "Has.All.StartWith()":
+                    return AllStrings(actual, expected, semanticModel, position)
+                        ? Should(actual, "ShouldAllBe", ItemLambda(item, Should(item, "StartsWith", expected, OrdinalComparison(semanticModel, position))))
+                        : null;
+                case "Is.All.EndsWith()":
+                case "Has.All.EndsWith()":
+                case "Is.All.EndWith()":
+                case "Has.All.EndWith()":
+                    return AllStrings(actual, expected, semanticModel, position)
+                        ? Should(actual, "ShouldAllBe", ItemLambda(item, Should(item, "EndsWith", expected, OrdinalComparison(semanticModel, position))))
                         : null;
                 case "Is.EqualTo().Within()":
                     return EqualWithin(actual, segments[1].Arguments, expected, semanticModel, position);
@@ -506,6 +523,28 @@ namespace Shouldly.FromAssert
                 node is LiteralExpressionSyntax ||
                 node is ThisExpressionSyntax ||
                 node is ParenthesizedExpressionSyntax);
+
+        // `Is.All.StartsWith(x)` and friends: a string predicate on each element, captured into an expression tree.
+        private static bool AllStrings(ExpressionSyntax actual, ExpressionSyntax expected, SemanticModel semanticModel, int position) =>
+            IsStringSequence(actual, semanticModel, position) &&
+            IsExpressionTreeSafe(expected) &&
+            IsString(expected, semanticModel, position);
+
+        // `StringComparison.Ordinal`, qualified when the file doesn't import System.
+        private static ExpressionSyntax OrdinalComparison(SemanticModel semanticModel, int position)
+        {
+            var shortForm = EnumValue("StringComparison", "Ordinal");
+            var type = semanticModel.GetSpeculativeTypeInfo(position, shortForm.Expression, SpeculativeBindingOption.BindAsTypeOrNamespace).Type;
+            return type?.ToDisplayString() == "System.StringComparison"
+                ? shortForm
+                : SyntaxFactory.MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        SyntaxFactory.IdentifierName("System"),
+                        SyntaxFactory.IdentifierName("StringComparison")),
+                    SyntaxFactory.IdentifierName("Ordinal"));
+        }
 
         // A sequence of non-nullable strings, so `item.Contains(x)` is a substring match on each, as NUnit's is.
         private static bool IsStringSequence(ExpressionSyntax expression, SemanticModel semanticModel, int position)
