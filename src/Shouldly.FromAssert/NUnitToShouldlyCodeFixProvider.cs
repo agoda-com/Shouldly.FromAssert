@@ -21,7 +21,7 @@ namespace Shouldly.FromAssert
         public sealed override ImmutableArray<string> FixableDiagnosticIds =>
             ImmutableArray.Create(NUnitToShouldlyAnalyzer.DiagnosticId);
 
-        public sealed override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
+        public sealed override FixAllProvider GetFixAllProvider() => new NUnitToShouldlyFixAllProvider(this);
 
         public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
         {
@@ -31,14 +31,15 @@ namespace Shouldly.FromAssert
             {
                 if (diagnostic.Id != NUnitToShouldlyAnalyzer.DiagnosticId) continue;
 
-                context.RegisterCodeFix(
-                    CodeAction.Create(
-                        title: Title,
-                        createChangedDocument: c => ConvertToShouldlyAsync(context.Document, diagnostic, c),
-                        equivalenceKey: Title),
-                    diagnostic);
+                context.RegisterCodeFix(CreateCodeAction(context.Document, diagnostic), diagnostic);
             }
         }
+
+        internal CodeAction CreateCodeAction(Document document, Diagnostic diagnostic) =>
+            CodeAction.Create(
+                title: Title,
+                createChangedDocument: c => ConvertToShouldlyAsync(document, diagnostic, c),
+                equivalenceKey: Title);
 
 
         private async Task<Document> ConvertToShouldlyAsync(Document document, Diagnostic diagnostic, CancellationToken cancellationToken)

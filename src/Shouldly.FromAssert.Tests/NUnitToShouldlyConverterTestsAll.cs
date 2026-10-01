@@ -1375,8 +1375,59 @@ namespace TestNamespace
         var codeFixTest = new CodeFixTest(WrapInTestMethod(before), WrapInTestMethod(after));
         // Statements left as NUnit asserts are still reported after the fix.
         codeFixTest.FixedState.MarkupHandling = MarkupMode.Allow;
+        // ...so fix-all takes a second, no-op pass over them once the Assert.Multiple around them has gone.
+        if (after.Contains("[|")) codeFixTest.NumberOfFixAllIterations = 2;
 
         await codeFixTest.RunAsync(CancellationToken.None);
+    }
+
+    // dotnet format runs the fix-all once, so an Assert.Multiple, the asserts inside it and the asserts around it
+    // must all convert in a single pass (#32).
+    [Test]
+    public async Task AssertMultiple_FixAllConvertsInOnePass()
+    {
+        await new CodeFixTest(
+                WrapInTestMethod(@"var contestant = 1337;
+            var name = ""Joel"";
+            [|Assert.That(contestant, Is.GreaterThan(1000))|];
+            [|Assert.Multiple(() =>
+            {
+                [|Assert.That(contestant, Is.EqualTo(1337))|];
+                [|Assert.AreEqual(""Joel"", name)|];
+                [|Assert.IsNotNull(name)|];
+            })|];
+            [|Assert.Multiple(() => [|Assert.AreEqual(1337, contestant)|])|];
+            [|Assert.IsTrue(contestant > 1000)|];"),
+                WrapInTestMethod(@"var contestant = 1337;
+            var name = ""Joel"";
+            contestant.ShouldBeGreaterThan(1000);
+            this.ShouldSatisfyAllConditions(
+                () => contestant.ShouldBe(1337),
+                () => name.ShouldBe(""Joel""),
+                () => name.ShouldNotBeNull());
+            this.ShouldSatisfyAllConditions(
+                () => contestant.ShouldBe(1337));
+            (contestant > 1000).ShouldBeTrue();"))
+            {
+                NumberOfFixAllIterations = 1,
+                CodeFixTestBehaviors = CodeFixTestBehaviors.SkipFixAllInProjectCheck | CodeFixTestBehaviors.SkipFixAllInSolutionCheck
+            }
+            .RunAsync(CancellationToken.None);
+    }
+
+    // Runner control, not assertions: there is nothing in Shouldly to convert them to (#32).
+    [TestCase("Assert.Ignore(\"not yet\");")]
+    [TestCase("Assert.Pass();")]
+    [TestCase("Assert.Inconclusive(\"no data\");")]
+    [TestCase("Assert.Warn(\"slow\");")]
+    public async Task RunnerControl_IsNotFlagged(string statement)
+    {
+        await new CSharpAnalyzerTest<NUnitToShouldlyAnalyzer, NUnitVerifier>
+            {
+                TestCode = WrapInTestMethod(statement),
+                ReferenceAssemblies = CodeFixTest.References
+            }
+            .RunAsync(CancellationToken.None);
     }
 
     private static IEnumerable<TestCaseData> UnconvertibleAssertMultipleTestCases()
