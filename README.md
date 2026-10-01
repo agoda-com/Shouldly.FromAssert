@@ -67,10 +67,14 @@ Here are some examples of the transformations this analyzer can perform:
 | `Assert.That(list, Has.Count.EqualTo(3))`          | `list.Count.ShouldBe(3)`                  |
 | `Assert.That(list, Is.EquivalentTo(other))`        | `list.ShouldBe(other, ignoreOrder: true)` |
 | `Assert.That(s, Does.StartWith("/").And.EndWith(".png"))` | `s.ShouldStartWith("/");` `s.ShouldEndWith(".png");` |
+| `Assert.That(x, Is.EqualTo(0.8).Within(0.001))`   | `x.ShouldBe(0.8, 0.001)`                  |
+| `Assert.ThrowsAsync<ArgumentException>(() => MethodAsync())` | `Should.Throw<ArgumentException>(() => MethodAsync())` |
+| `Assert.Fail("why")`                               | `throw new ShouldAssertException("why");` |
+| `Assert.That(s, Does.Contain("a").Or.Contain("b"))` | `new[] { "a", "b" }.ShouldContain(item => s.Contains(item))` |
 
 And many more! Check out the tests for a complete list of supported conversions.
 
-`Assert.Multiple` is only converted (and only reported) when its lambda is synchronous, contains nothing but expression statements, and sits in an instance member, since `ShouldSatisfyAllConditions` needs `this` and takes one `Action` per condition. Hoist locals and awaited values out of the block first. With nullable enabled, a `x!.` on the first statement no longer carries into the later lambdas; add `x.ShouldNotBeNull();` above the block instead.
+`Assert.Multiple` is only converted (and only reported) when its lambda contains nothing but expression statements and sits in an instance member, since `ShouldSatisfyAllConditions` needs `this` and takes one `Action` per condition. Hoist locals out of the block first. An `async` lambda in an async method has each awaited value moved into a local above the call (`var readAsByteArray = await response.ReadAsByteArrayAsync();`), unless an await is only evaluated conditionally (`?.`, `??`, `&&`, `||`, `?:`) or is a whole statement. With nullable enabled, a `x!.` on the first statement no longer carries into the later lambdas; add `x.ShouldNotBeNull();` above the block instead.
 
 With nullable enabled, a `Does.Contain`, `Does.StartWith`, `Does.EndWith` or `Does.Match` on a `string?` that may be null becomes `x.ShouldNotBeNull().ShouldContain(...)`. NUnit fails these on null, and Shouldly's string overloads take a non-nullable `string`, so the plain call would raise CS8604. `Does.Not.Contain` passes on null in NUnit, so it gets no `ShouldNotBeNull()`.
 

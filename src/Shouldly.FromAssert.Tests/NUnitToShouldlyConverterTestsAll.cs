@@ -1616,6 +1616,271 @@ namespace TestNamespace
     }}
 }}";
 
+    // Forms that were reported but never converted (#34), each from a real suite.
+    private static IEnumerable<TestCaseData> PreviouslyUnconvertedFormTestCases()
+    {
+        yield return new TestCaseData(
+            @"[|Assert.That(sample.Ratio, Is.EqualTo(0.8).Within(0.001))|];",
+            @"sample.Ratio.ShouldBe(0.8, 0.001);"
+        ).SetName("Is.EqualTo.Within on a double");
+
+        yield return new TestCaseData(
+            @"[|Assert.That(sample.To, Is.EqualTo(sample.From)
+                .Within(TimeSpan.FromSeconds(1)), ""the windows meet"")|];",
+            @"sample.To.ShouldBe(sample.From, TimeSpan.FromSeconds(1), ""the windows meet"");"
+        ).SetName("Is.EqualTo.Within on a DateTimeOffset with a message");
+
+        yield return new TestCaseData(
+            @"[|Assert.That(sample.Median, Is.EqualTo(TimeSpan.FromHours(1)).Within(TimeSpan.FromSeconds(1)))|];",
+            @"sample.Median.ShouldNotBeNull().ShouldBe(TimeSpan.FromHours(1), TimeSpan.FromSeconds(1));"
+        ).SetName("Is.EqualTo.Within on a nullable actual asserts non-null first");
+
+        yield return new TestCaseData(
+            @"double? expected = 0.8;
+            [|Assert.That(sample.Ratio, Is.EqualTo(expected).Within(0.001))|];",
+            @"double? expected = 0.8;
+            sample.Ratio.ShouldBe(expected.Value, 0.001);"
+        ).SetName("Is.EqualTo.Within with a nullable expected unwraps it");
+
+        yield return new TestCaseData(
+            @"var refused = [|Assert.ThrowsAsync<InvalidOperationException>(() => RefuseAsync())|];",
+            @"var refused = Should.Throw<InvalidOperationException>(() => RefuseAsync());"
+        ).SetName("Assert.ThrowsAsync");
+
+        yield return new TestCaseData(
+            @"[|Assert.DoesNotThrowAsync(() => Task.CompletedTask)|];",
+            @"Should.NotThrow(() => Task.CompletedTask);"
+        ).SetName("Assert.DoesNotThrowAsync");
+
+        yield return new TestCaseData(
+            @"[|Assert.Fail($""no {sample.Ratio} snapshot"")|];",
+            @"throw new ShouldAssertException($""no {sample.Ratio} snapshot"");"
+        ).SetName("Assert.Fail with a message");
+
+        yield return new TestCaseData(
+            @"if (sample.Lines.Count == 0) [|Assert.Fail()|];",
+            @"if (sample.Lines.Count == 0) throw new ShouldAssertException(null);"
+        ).SetName("Assert.Fail without a message as an embedded statement");
+
+        yield return new TestCaseData(
+            @"[|Assert.That(sample.Lines, Has.None.EqualTo(""Price drop""), ""never posted"")|];",
+            @"sample.Lines.ShouldNotContain(""Price drop"", ""never posted"");"
+        ).SetName("Has.None.EqualTo with a message");
+
+        yield return new TestCaseData(
+            @"[|Assert.That(sample.Numbers, Has.None.EqualTo(75).And.None.EqualTo(78))|];",
+            @"sample.Numbers.ShouldNotContain(75);
+            sample.Numbers.ShouldNotContain(78);"
+        ).SetName("Has.None.EqualTo And None.EqualTo");
+
+        yield return new TestCaseData(
+            @"[|Assert.That(sample.Lines, Has.Some.EqualTo(""Price drop""))|];",
+            @"sample.Lines.ShouldContain(""Price drop"");"
+        ).SetName("Has.Some.EqualTo");
+
+        yield return new TestCaseData(
+            @"[|Assert.That(sample.Body, Does.Contain(""&#x2B;840 GB"").Or.Contain(""+840 GB""))|];",
+            @"new[] { ""&#x2B;840 GB"", ""+840 GB"" }.ShouldContain(item => sample.Body.Contains(item));"
+        ).SetName("Does.Contain Or Contain");
+
+        yield return new TestCaseData(
+            @"[|Assert.That(sample.Errors, Does.Not.ContainKey(""sonarr""))|];",
+            @"sample.Errors.ShouldNotContainKey(""sonarr"");"
+        ).SetName("Does.Not.ContainKey");
+
+        yield return new TestCaseData(
+            @"[|Assert.That(sample.Errors, Does.ContainKey(""sonarr""))|];",
+            @"sample.Errors.ShouldContainKey(""sonarr"");"
+        ).SetName("Does.ContainKey");
+
+        yield return new TestCaseData(
+            @"[|Assert.That(sample.Body, Does.Not.Match(@""\d,\d+,""), ""a comma decimal would corrupt the list"")|];",
+            @"sample.Body.ShouldNotMatch(@""\d,\d+,"", ""a comma decimal would corrupt the list"");"
+        ).SetName("Does.Not.Match with a message");
+
+        yield return new TestCaseData(
+            @"[|Assert.That(sample.Body, Has.Length.EqualTo(201))|];",
+            @"sample.Body.Length.ShouldBe(201);"
+        ).SetName("Has.Length.EqualTo");
+
+        yield return new TestCaseData(
+            @"[|Assert.That(sample.Lines.Distinct(), Is.SubsetOf(new[] { ""fix"", ""triage"" }))|];",
+            @"sample.Lines.Distinct().ShouldBeSubsetOf(new[] { ""fix"", ""triage"" });"
+        ).SetName("Is.SubsetOf");
+
+        yield return new TestCaseData(
+            @"[|Assert.That(sample.Lines, Is.All.Contain(""Blocked"").And.All.Contain(""/account/unblock""))|];",
+            @"sample.Lines.ShouldAllBe(item => item.Contains(""Blocked""));
+            sample.Lines.ShouldAllBe(item => item.Contains(""/account/unblock""));"
+        ).SetName("Is.All.Contain And All.Contain");
+    }
+
+    [Test]
+    [TestCaseSource(nameof(PreviouslyUnconvertedFormTestCases))]
+    public async Task TestPreviouslyUnconvertedFormConversion(string before, string after)
+    {
+        // Warnings are compared too, so a conversion that leaves e.g. CS8629 or CS0162 behind fails.
+        var codeFixTest = new CodeFixTest(WrapInSampleTestMethod(before), WrapInSampleTestMethod(after))
+        {
+            CompilerDiagnostics = CompilerDiagnostics.Warnings
+        };
+
+        await codeFixTest.RunAsync(CancellationToken.None);
+    }
+
+    [Test]
+    public async Task AssertFail_RemovesTheReturnAfterIt()
+    {
+        const string signature = "private async Task<IReadOnlyList<string>> SnapshotAsync()";
+        await new CodeFixTest(
+                WrapInSampleTestMethod(@"for (var tries = 0; tries < 3; tries++)
+            {
+                await Task.Delay(1);
+            }
+
+            [|Assert.Fail(""no snapshot"")|];
+            return new List<string>();", signature),
+                WrapInSampleTestMethod(@"for (var tries = 0; tries < 3; tries++)
+            {
+                await Task.Delay(1);
+            }
+
+            throw new ShouldAssertException(""no snapshot"");", signature))
+            {
+                CompilerDiagnostics = CompilerDiagnostics.Warnings
+            }
+            .RunAsync(CancellationToken.None);
+    }
+
+    // Shouldly's ShouldContainKey/ShouldNotContainKey only take an IDictionary (as of 4.3.0), so on an
+    // IReadOnlyDictionary the assert stays reported for a hand conversion rather than becoming code that doesn't compile.
+    [Test]
+    public async Task DoesNotContainKeyOnIReadOnlyDictionary_IsLeftAlone()
+    {
+        var source = WrapInSampleTestMethod(@"[|Assert.That(sample.Failures, Does.Not.ContainKey(""sonarr""))|];");
+        // The fix is still offered (as for every reported assert) but leaves the document unchanged.
+        await new CodeFixTest(source, source)
+            {
+                NumberOfIncrementalIterations = 1,
+                NumberOfFixAllIterations = 1
+            }
+            .RunAsync(CancellationToken.None);
+    }
+
+    private static IEnumerable<TestCaseData> AsyncAssertMultipleTestCases()
+    {
+        yield return new TestCaseData(
+            @"[|Assert.Multiple(async () =>
+            {
+                [|Assert.That(sample.Ratio, Is.EqualTo(0.8))|];
+                [|Assert.That(sample.Body, Is.EqualTo(""image/png""))|];
+                [|Assert.That(await sample.ReadAsByteArrayAsync(), Is.EqualTo(new byte[] { 1 }))|];
+            })|];",
+            @"var readAsByteArray = await sample.ReadAsByteArrayAsync();
+            this.ShouldSatisfyAllConditions(
+                () => sample.Ratio.ShouldBe(0.8),
+                () => sample.Body.ShouldBe(""image/png""),
+                () => readAsByteArray.ShouldBe(new byte[] { 1 }));"
+        ).SetName("Assert.Multiple with an async lambda hoists the await into a local");
+
+        yield return new TestCaseData(
+            @"var status = 1;
+            [|Assert.Multiple(async () =>
+            {
+                [|Assert.That(await GetStatusAsync(), Is.EqualTo(""Ordered""))|];
+                [|Assert.That(await GetStatusAsync().ConfigureAwait(false), Does.StartWith(""Or""))|];
+            })|];",
+            @"var status = 1;
+            var status1 = await GetStatusAsync();
+            var status2 = await GetStatusAsync().ConfigureAwait(false);
+            this.ShouldSatisfyAllConditions(
+                () => status1.ShouldBe(""Ordered""),
+                () => status2.ShouldStartWith(""Or""));"
+        ).SetName("Assert.Multiple with an async lambda keeps hoisted names unique");
+
+        yield return new TestCaseData(
+            @"[|Assert.Multiple(async () => [|Assert.That(sample.Ratio, Is.EqualTo(0.8))|])|];",
+            @"this.ShouldSatisfyAllConditions(
+                () => sample.Ratio.ShouldBe(0.8));"
+        ).SetName("Assert.Multiple with an async lambda and nothing to await");
+    }
+
+    [Test]
+    [TestCaseSource(nameof(AsyncAssertMultipleTestCases))]
+    public async Task TestAsyncAssertMultipleConversion(string before, string after)
+    {
+        const string signature = "public async Task TestMethod()";
+        var codeFixTest = new CodeFixTest(WrapInSampleTestMethod(before, signature), WrapInSampleTestMethod(after, signature));
+        await codeFixTest.RunAsync(CancellationToken.None);
+    }
+
+    private static IEnumerable<TestCaseData> UnconvertibleAsyncAssertMultipleTestCases()
+    {
+        yield return new TestCaseData(
+            "public void TestMethod()",
+            @"Assert.Multiple(async () =>
+            {
+                [|Assert.That(await GetStatusAsync(), Is.EqualTo(""Ordered""))|];
+            });"
+        ).SetName("Assert.Multiple with an async lambda in a sync method is not reported");
+
+        yield return new TestCaseData(
+            "public async Task TestMethod()",
+            @"Assert.Multiple(async () =>
+            {
+                [|Assert.That(sample.Body ?? await GetStatusAsync(), Is.EqualTo(""Ordered""))|];
+            });"
+        ).SetName("Assert.Multiple whose await is only evaluated on ?? is not reported");
+    }
+
+    [Test]
+    [TestCaseSource(nameof(UnconvertibleAsyncAssertMultipleTestCases))]
+    public async Task TestUnconvertibleAsyncAssertMultipleIsNotReported(string signature, string body)
+    {
+        var test = new CSharpAnalyzerTest<NUnitToShouldlyAnalyzer, NUnitVerifier>
+        {
+            TestCode = WrapInSampleTestMethod(body, signature),
+            ReferenceAssemblies = TestReferenceAssemblies
+        };
+
+        await test.RunAsync(CancellationToken.None);
+    }
+
+    private static string WrapInSampleTestMethod(string body, string signature = "public void TestMethod()") => $@"#nullable enable
+#pragma warning disable CS1591
+using NUnit.Framework;using System;using System.Collections.Generic;using System.Linq;using System.Threading.Tasks;
+using Shouldly;
+namespace TestNamespace
+{{
+    public class Sample
+    {{
+        public double Ratio {{ get; set; }} = 0.8;
+        public TimeSpan? Median {{ get; set; }} = TimeSpan.FromHours(1);
+        public DateTimeOffset From {{ get; set; }}
+        public DateTimeOffset To {{ get; set; }}
+        public string Body {{ get; set; }} = """";
+        public List<string> Lines {{ get; }} = new List<string>();
+        public List<int> Numbers {{ get; }} = new List<int>();
+        public Dictionary<string, string> Errors {{ get; }} = new Dictionary<string, string>();
+        public IReadOnlyDictionary<string, string> Failures => Errors;
+        public Task<byte[]> ReadAsByteArrayAsync() => Task.FromResult(new byte[] {{ 1 }});
+    }}
+
+    public class TestClass
+    {{
+        private readonly Sample sample = new Sample();
+
+        [Test]
+        {signature}
+        {{
+            {body}
+        }}
+
+        private static Task<string> GetStatusAsync() => Task.FromResult(""Ordered"");
+        private static Task RefuseAsync() => Task.FromException(new InvalidOperationException());
+    }}
+}}";
+
     private class
         CodeFixTest :CSharpCodeFixTest<NUnitToShouldlyAnalyzer, NUnitToShouldlyCodeFixProvider, NUnitVerifier>
     {

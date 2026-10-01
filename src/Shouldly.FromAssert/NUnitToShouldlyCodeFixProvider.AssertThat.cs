@@ -203,15 +203,15 @@ namespace Shouldly.FromAssert
 
             while (true)
             {
-                var root = ChainRoot(rest);
-                if (root == null) return null;
-
                 var and = FindInnermostAnd(rest);
                 if (and == null)
                 {
                     links.Add(rest);
                     return links;
                 }
+
+                var root = ChainRoot(rest);
+                if (root == null) return null;
 
                 links.Add(and.Expression);
                 rest = rest.ReplaceNode(and, SyntaxFactory.IdentifierName(root.Identifier.Text));
@@ -329,6 +329,9 @@ namespace Shouldly.FromAssert
             var expected = constraintArguments.Count > 0 ? constraintArguments[0].Expression : null;
             var item = ItemName(expected, semanticModel, position);
 
+            if (shape != "Does.Contain()" && shape.Replace(".Or.Contain()", "") == "Does.Contain()")
+                return ContainsAny(actual, segments, semanticModel, position);
+
             switch (shape)
             {
                 case "Is.Null":
@@ -400,10 +403,128 @@ namespace Shouldly.FromAssert
                     return Should(actual, "ShouldBeInOrder", EnumValue("SortDirection", "Descending"));
                 case "Does.Match()":
                     return Should(actual, "ShouldMatch", expected);
+                case "Does.Not.Match()":
+                    return Should(actual, "ShouldNotMatch", expected);
+                // Shouldly only has IReadOnlyDictionary overloads from 4.3.0, so check the call binds.
+                case "Does.ContainKey()":
+                    return BindsOrNull(Should(ParenthesiseIfNeeded(actual), "ShouldContainKey", expected), semanticModel, position);
+                case "Does.Not.ContainKey()":
+                    return BindsOrNull(Should(ParenthesiseIfNeeded(actual), "ShouldNotContainKey", expected), semanticModel, position);
+                case "Has.Some.EqualTo()":
+                    return Should(actual, "ShouldContain", expected);
+                case "Has.None.EqualTo()":
+                    return Should(actual, "ShouldNotContain", expected);
+                case "Has.Length.EqualTo()":
+                    var length = PropertyOf(actual, "Length", semanticModel, position);
+                    return length == null ? null : Should(length, "ShouldBe", expected);
+                case "Is.SubsetOf()":
+                    return Should(actual, "ShouldBeSubsetOf", expected);
+                case "Is.All.Contain()":
+                case "Has.All.Contain()":
+                    return IsStringSequence(actual, semanticModel, position) && IsExpressionTreeSafe(expected)
+                        ? Should(actual, "ShouldAllBe", ItemLambda(item, Should(item, "Contains", expected)))
+                        : null;
+                case "Is.EqualTo().Within()":
+                    return EqualWithin(actual, segments[1].Arguments, expected, semanticModel, position);
                 default:
                     return null;
             }
         }
+
+        // Is.EqualTo(x).Within(tolerance) maps onto Shouldly's tolerance overloads (double, float, decimal, TimeSpan,
+        // DateTime, DateTimeOffset). Those don't take nullables, so a nullable actual asserts non-null first and a
+        // nullable expected is unwrapped. Anything that still doesn't bind (e.g. ints) is left to convert by hand.
+        private static ExpressionSyntax EqualWithin(
+            ExpressionSyntax actual,
+            ArgumentListSyntax equalTo,
+            ExpressionSyntax tolerance,
+            SemanticModel semanticModel,
+            int position)
+        {
+            if (equalTo.Arguments.Count != 1 || tolerance == null) return null;
+
+            var receiver = ParenthesiseIfNeeded(actual);
+            if (IsNullableValueType(actual, semanticModel, position))
+                receiver = Should(receiver, "ShouldNotBeNull");
+
+            var expected = equalTo.Arguments[0].Expression;
+            if (IsNullableValueType(expected, semanticModel, position))
+                expected = SyntaxFactory.MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    ParenthesiseIfNeeded(expected),
+                    SyntaxFactory.IdentifierName("Value"));
+
+            return BindsOrNull(Should(receiver, "ShouldBe", expected, tolerance), semanticModel, position);
+        }
+
+        private static ExpressionSyntax BindsOrNull(ExpressionSyntax call, SemanticModel semanticModel, int position) =>
+            Binds(call, semanticModel, position) ? call : null;
+
+        // Does.Contain(a).Or.Contain(b) on a string: `new[] { a, b }.ShouldContain(item => actual.Contains(item))`.
+        // string.Contains(string) is ordinal, as NUnit is. The predicate is an expression tree, so the actual value
+        // must be something an expression tree can hold, and a maybe-null string is left alone rather than
+        // dereferenced inside it.
+        private static ExpressionSyntax ContainsAny(
+            ExpressionSyntax actual,
+            List<(string Name, ArgumentListSyntax Arguments)> segments,
+            SemanticModel semanticModel,
+            int position)
+        {
+            var typeInfo = semanticModel.GetSpeculativeTypeInfo(position, actual, SpeculativeBindingOption.BindAsExpression);
+            if (typeInfo.Type?.SpecialType != SpecialType.System_String ||
+                typeInfo.Nullability.FlowState == NullableFlowState.MaybeNull ||
+                !IsExpressionTreeSafe(actual))
+                return null;
+
+            var alternatives = segments.Where(s => s.Name == "Contain").Select(s => s.Arguments).ToList();
+            if (alternatives.Any(a => a.Arguments.Count != 1)) return null;
+
+            var item = ItemName(actual, semanticModel, position);
+            var array = SyntaxFactory.ImplicitArrayCreationExpression(
+                SyntaxFactory.InitializerExpression(
+                    SyntaxKind.ArrayInitializerExpression,
+                    SyntaxFactory.SeparatedList(alternatives.Select(a => a.Arguments[0].Expression.WithoutTrivia()))));
+
+            return Should(array, "ShouldContain", ItemLambda(item, Should(ParenthesiseIfNeeded(actual), "Contains", item)));
+        }
+
+        // Expression trees can't hold await, ?., lambdas, assignments, patterns and the like, so only plain
+        // names, member and element access, calls and literals are captured into one.
+        private static bool IsExpressionTreeSafe(ExpressionSyntax expression) =>
+            expression != null &&
+            expression.DescendantNodesAndSelf().All(node =>
+                node is IdentifierNameSyntax ||
+                node is GenericNameSyntax ||
+                node is TypeArgumentListSyntax ||
+                node is PredefinedTypeSyntax ||
+                node is MemberAccessExpressionSyntax ||
+                node is ElementAccessExpressionSyntax ||
+                node is BracketedArgumentListSyntax ||
+                node is InvocationExpressionSyntax ||
+                node is ArgumentListSyntax ||
+                node is ArgumentSyntax argument && argument.RefKindKeyword.IsKind(SyntaxKind.None) ||
+                node is LiteralExpressionSyntax ||
+                node is ThisExpressionSyntax ||
+                node is ParenthesizedExpressionSyntax);
+
+        // A sequence of non-nullable strings, so `item.Contains(x)` is a substring match on each, as NUnit's is.
+        private static bool IsStringSequence(ExpressionSyntax expression, SemanticModel semanticModel, int position)
+        {
+            var type = TypeOf(expression, semanticModel, position);
+            if (type == null || type.SpecialType == SpecialType.System_String) return false;
+
+            var sequence = type.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T
+                ? (INamedTypeSymbol) type
+                : type.AllInterfaces.FirstOrDefault(i =>
+                    i.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T);
+            var element = sequence?.TypeArguments[0];
+
+            return element?.SpecialType == SpecialType.System_String &&
+                   element.NullableAnnotation != NullableAnnotation.Annotated;
+        }
+
+        private static bool IsNullableValueType(ExpressionSyntax expression, SemanticModel semanticModel, int position) =>
+            TypeOf(expression, semanticModel, position)?.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
 
         // `Has.All.Matches<int>(p)` becomes [("Has", null), ("All", null), ("Matches", (p))].
         private static List<(string Name, ArgumentListSyntax Arguments)> FlattenConstraint(ExpressionSyntax constraint)
@@ -517,22 +638,19 @@ namespace Shouldly.FromAssert
         }
 
         // Has.Count reads Count by reflection, which for an array is Length.
-        private static ExpressionSyntax CountOf(ExpressionSyntax actual, SemanticModel semanticModel, int position)
-        {
-            var receiver = ParenthesiseIfNeeded(actual);
-            foreach (var property in new[] { "Count", "Length" })
-            {
-                var access = SyntaxFactory.MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    receiver,
-                    SyntaxFactory.IdentifierName(property));
-                var symbol = semanticModel
-                    .GetSpeculativeSymbolInfo(position, access, SpeculativeBindingOption.BindAsExpression)
-                    .Symbol;
-                if (symbol is IPropertySymbol) return access;
-            }
+        private static ExpressionSyntax CountOf(ExpressionSyntax actual, SemanticModel semanticModel, int position) =>
+            PropertyOf(actual, "Count", semanticModel, position) ?? PropertyOf(actual, "Length", semanticModel, position);
 
-            return null;
+        private static ExpressionSyntax PropertyOf(ExpressionSyntax actual, string property, SemanticModel semanticModel, int position)
+        {
+            var access = SyntaxFactory.MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                ParenthesiseIfNeeded(actual),
+                SyntaxFactory.IdentifierName(property));
+            return semanticModel.GetSpeculativeSymbolInfo(position, access, SpeculativeBindingOption.BindAsExpression)
+                .Symbol is IPropertySymbol
+                ? access
+                : null;
         }
 
         private static bool IsBoolean(ExpressionSyntax expression, SemanticModel semanticModel, int position) =>
