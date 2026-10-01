@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Formatting;
 
 namespace Shouldly.FromAssert
 {
@@ -50,7 +51,14 @@ namespace Shouldly.FromAssert
 
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
 
-            var newRoot = ConvertAssertThat(root, invocation, semanticModel);
+            var awaits = AssertMultiple.GetAwaitsToHoist(invocation);
+            if (awaits != null)
+            {
+                return await ConvertAsyncAssertMultipleAsync(document, root, invocation, awaits, semanticModel, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            var newRoot = ConvertAssertFail(root, invocation) ?? ConvertAssertThat(root, invocation, semanticModel);
             if (newRoot != null)
             {
                 return document.WithSyntaxRoot(newRoot);
@@ -130,6 +138,7 @@ namespace Shouldly.FromAssert
                 case ThisExpressionSyntax _:
                 case PredefinedTypeSyntax _:
                 case TypeOfExpressionSyntax _:
+                case ImplicitArrayCreationExpressionSyntax _:
                     return false;
                 default:
                     return true;
@@ -674,7 +683,9 @@ namespace Shouldly.FromAssert
                         .WithLeadingTrivia(invocation.GetLeadingTrivia());
 
 
+                // Should.Throw(Func<Task>) and Should.NotThrow(Func<Task>) block, as NUnit's async forms do.
                 case "Throws":
+                case "ThrowsAsync":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -693,6 +704,7 @@ namespace Shouldly.FromAssert
                         .WithTrailingTrivia(invocation.GetTrailingTrivia());
 
                 case "DoesNotThrow":
+                case "DoesNotThrowAsync":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
@@ -814,6 +826,133 @@ namespace Shouldly.FromAssert
                         SyntaxFactory.Token(SyntaxKind.CloseParenToken)))
                 .WithLeadingTrivia(invocation.GetLeadingTrivia())
                 .WithTrailingTrivia(invocation.GetTrailingTrivia());
+        }
+
+        // ShouldSatisfyAllConditions only takes Actions, so Assert.Multiple(async () => { Assert.That(await x, ...); })
+        // first becomes `var y = await x; Assert.Multiple(() => { Assert.That(y, ...); });`, and that converts as usual
+        // against the rewritten document.
+        private async Task<Document> ConvertAsyncAssertMultipleAsync(
+            Document document,
+            SyntaxNode root,
+            InvocationExpressionSyntax invocation,
+            IReadOnlyList<AwaitExpressionSyntax> awaits,
+            SemanticModel semanticModel,
+            CancellationToken cancellationToken)
+        {
+            var taken = new HashSet<string>(invocation.FirstAncestorOrSelf<MemberDeclarationSyntax>().DescendantTokens()
+                .Where(t => t.IsKind(SyntaxKind.IdentifierToken))
+                .Select(t => t.ValueText));
+            var names = new Dictionary<AwaitExpressionSyntax, string>();
+            var statements = new List<StatementSyntax>();
+            foreach (var awaitExpression in awaits)
+            {
+                var name = UniqueName(AwaitedName(awaitExpression), taken, semanticModel, invocation.SpanStart);
+                taken.Add(name);
+                names[awaitExpression] = name;
+                statements.Add(SyntaxFactory.LocalDeclarationStatement(
+                    SyntaxFactory.VariableDeclaration(
+                        SyntaxFactory.IdentifierName("var"),
+                        SyntaxFactory.SingletonSeparatedList(
+                            SyntaxFactory.VariableDeclarator(SyntaxFactory.Identifier(name))
+                                .WithInitializer(SyntaxFactory.EqualsValueClause(awaitExpression.WithoutTrivia()))))));
+            }
+
+            var lambda = (ParenthesizedLambdaExpressionSyntax) invocation.ArgumentList.Arguments[0].Expression;
+            var syncLambda = lambda.ReplaceNodes(awaits, (original, _) =>
+                SyntaxFactory.IdentifierName(names[original]).WithTriviaFrom(original));
+            syncLambda = syncLambda.WithModifiers(
+                SyntaxFactory.TokenList(syncLambda.Modifiers.Where(m => !m.IsKind(SyntaxKind.AsyncKeyword))));
+
+            var annotation = new SyntaxAnnotation();
+            var statement = (ExpressionStatementSyntax) invocation.Parent;
+            statements.Add(statement.WithExpression(
+                invocation.ReplaceNode(lambda, syncLambda).WithAdditionalAnnotations(annotation)));
+
+            var hoisted = document.WithSyntaxRoot(ReplaceWithStatements(root, invocation, statements));
+            var hoistedRoot = await hoisted.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+            var hoistedModel = await hoisted.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+            var multiple = hoistedRoot.GetAnnotatedNodes(annotation).OfType<InvocationExpressionSyntax>().Single();
+
+            var converted = ConvertAssertMultiple(multiple, hoistedModel);
+            return converted == null ? document : hoisted.WithSyntaxRoot(hoistedRoot.ReplaceNode(multiple, converted));
+        }
+
+        // `await image.Content.ReadAsByteArrayAsync()` is named readAsByteArray, `await GetStatusAsync()` status;
+        // anything without a method or property name to go on is `awaited`.
+        private static string AwaitedName(AwaitExpressionSyntax awaitExpression)
+        {
+            var expression = awaitExpression.Expression;
+            if (expression is InvocationExpressionSyntax configureAwait &&
+                configureAwait.Expression is MemberAccessExpressionSyntax configureAccess &&
+                configureAccess.Name.Identifier.Text == "ConfigureAwait")
+            {
+                expression = configureAccess.Expression;
+            }
+
+            if (expression is InvocationExpressionSyntax call) expression = call.Expression;
+
+            var name = expression is MemberAccessExpressionSyntax memberAccess ? memberAccess.Name.Identifier.ValueText
+                : expression is SimpleNameSyntax simpleName ? simpleName.Identifier.ValueText
+                : "";
+
+            if (name.EndsWith("Async")) name = name.Substring(0, name.Length - "Async".Length);
+            if (name.StartsWith("Get") && name.Length > 3 && char.IsUpper(name[3])) name = name.Substring(3);
+            if (name.Length > 0) name = char.ToLowerInvariant(name[0]) + name.Substring(1);
+
+            return SyntaxFacts.IsValidIdentifier(name) && SyntaxFacts.GetKeywordKind(name) == SyntaxKind.None
+                ? name
+                : "awaited";
+        }
+
+        private static string UniqueName(string name, ISet<string> taken, SemanticModel semanticModel, int position)
+        {
+            for (var suffix = 0; ; suffix++)
+            {
+                var candidate = suffix == 0 ? name : name + suffix;
+                if (!taken.Contains(candidate) && semanticModel.LookupSymbols(position, name: candidate).IsEmpty)
+                    return candidate;
+            }
+        }
+
+        // Shouldly has no Fail, so Assert.Fail(message) throws the exception Shouldly's own asserts throw.
+        // A `return` straight after it is unreachable once it's a throw (CS0162), so it goes too.
+        private static SyntaxNode ConvertAssertFail(SyntaxNode root, InvocationExpressionSyntax invocation)
+        {
+            if (!(invocation.Expression is MemberAccessExpressionSyntax memberAccess) ||
+                memberAccess.Name.Identifier.Text != "Fail" ||
+                !(memberAccess.Expression is IdentifierNameSyntax assertClass) ||
+                assertClass.Identifier.Text != "Assert" ||
+                invocation.ArgumentList.Arguments.Count > 1 ||
+                !(invocation.Parent is ExpressionStatementSyntax statement))
+            {
+                return null;
+            }
+
+            var message = invocation.ArgumentList.Arguments.Count == 1
+                ? invocation.ArgumentList.Arguments[0].Expression.WithoutTrivia()
+                : SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression);
+
+            var throwStatement = SyntaxFactory.ThrowStatement(
+                    SyntaxFactory.ObjectCreationExpression(SyntaxFactory.IdentifierName("ShouldAssertException"))
+                        .WithArgumentList(SyntaxFactory.ArgumentList(
+                            SyntaxFactory.SingletonSeparatedList(SyntaxFactory.Argument(message)))))
+                .WithTriviaFrom(statement)
+                .WithAdditionalAnnotations(Formatter.Annotation);
+
+            if (statement.Parent is BlockSyntax block)
+            {
+                var statements = block.Statements;
+                var index = statements.IndexOf(statement);
+                statements = statements.Replace(statement, throwStatement);
+                if (index + 1 < statements.Count && statements[index + 1] is ReturnStatementSyntax)
+                {
+                    statements = statements.RemoveAt(index + 1);
+                }
+
+                return root.ReplaceNode(block, block.WithStatements(statements));
+            }
+
+            return root.ReplaceNode(statement, throwStatement);
         }
 
         // An inner assert becomes one condition per Shouldly call, so `.And.` chains split into separate conditions.

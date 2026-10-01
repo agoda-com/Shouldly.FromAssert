@@ -59,7 +59,8 @@ namespace Shouldly.FromAssert
 
             // Only report Assert.Multiple when the fix can turn it into ShouldSatisfyAllConditions.
             if (method.Name == "Multiple" && containingType == "NUnit.Framework.Assert" &&
-                AssertMultiple.GetConditions(invocation) == null) return false;
+                AssertMultiple.GetConditions(invocation) == null &&
+                AssertMultiple.GetAwaitsToHoist(invocation) == null) return false;
 
             return true;
         }
