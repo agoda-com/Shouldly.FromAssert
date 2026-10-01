@@ -36,6 +36,10 @@ namespace Shouldly.FromAssert
             "NUnit.Framework.StringAssert",
             "NUnit.Framework.CollectionAssert");
 
+        // Runner control rather than assertions: they skip, pass or warn about the test, and Shouldly has no equivalent.
+        private static readonly ImmutableHashSet<string> RunnerControlMethods = ImmutableHashSet.Create(
+            "Ignore", "Pass", "Inconclusive", "Warn");
+
         private static void AnalyzeNode(SyntaxNodeAnalysisContext context)
         {
             var invocation = (InvocationExpressionSyntax)context.Node;
@@ -56,6 +60,8 @@ namespace Shouldly.FromAssert
 
             var containingType = method.ContainingType?.ToDisplayString();
             if (containingType == null || !NUnitAssertTypes.Contains(containingType)) return false;
+
+            if (containingType == "NUnit.Framework.Assert" && RunnerControlMethods.Contains(method.Name)) return false;
 
             // Only report Assert.Multiple when the fix can turn it into ShouldSatisfyAllConditions.
             if (method.Name == "Multiple" && containingType == "NUnit.Framework.Assert" &&
