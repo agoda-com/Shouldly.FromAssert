@@ -1366,6 +1366,42 @@ namespace TestNamespace
             this.ShouldSatisfyAllConditions(
                 () => contestant.ShouldBe(1337));"
         ).SetName("Assert.Multiple fully qualified");
+
+        yield return new TestCaseData(
+            @"var name = ""Joel"";
+            var uris = new List<Uri> { new Uri(""https://example.com"") };
+            [|Assert.Multiple(() =>
+            {
+                [|Assert.That(name, Is.Not.Null)|];
+                [|Assert.That(uris, Has.Count.EqualTo(1))|];
+            })|];",
+            @"var name = ""Joel"";
+            var uris = new List<Uri> { new Uri(""https://example.com"") };
+            this.ShouldSatisfyAllConditions(
+                () => { name.ShouldNotBeNull(); },
+                () => uris.Count.ShouldBe(1));"
+        ).SetName("Assert.Multiple gives a first condition that returns a string a block body");
+
+        yield return new TestCaseData(
+            @"var name = ""Joel"";
+            [|Assert.Multiple(() => [|Assert.IsNotNull(name)|])|];",
+            @"var name = ""Joel"";
+            this.ShouldSatisfyAllConditions(
+                () => { name.ShouldNotBeNull(); });"
+        ).SetName("Assert.Multiple with a single condition that returns a string");
+
+        yield return new TestCaseData(
+            @"object name = ""Joel"";
+            [|Assert.Multiple(() =>
+            {
+                [|Assert.That(name, Is.TypeOf(typeof(string)))|];
+                [|Assert.IsNotNull(name)|];
+            })|];",
+            @"object name = ""Joel"";
+            this.ShouldSatisfyAllConditions(
+                () => { name.ShouldBeOfType<string>(); },
+                () => name.ShouldNotBeNull());"
+        ).SetName("Assert.Multiple gives a first ShouldBeOfType<string> a block body");
     }
 
     [Test]
