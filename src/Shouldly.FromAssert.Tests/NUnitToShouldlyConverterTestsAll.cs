@@ -1800,6 +1800,47 @@ namespace TestNamespace
             @"sample.Lines.ShouldAllBe(item => item.Contains(""Blocked""));
             sample.Lines.ShouldAllBe(item => item.Contains(""/account/unblock""));"
         ).SetName("Is.All.Contain And All.Contain");
+
+        yield return new TestCaseData(
+            @"var uris = new List<string> { ""https://a"" };
+            [|Assert.That(uris, Is.All.StartsWith(""https://""))|];",
+            @"var uris = new List<string> { ""https://a"" };
+            uris.ShouldAllBe(item => item.StartsWith(""https://"", StringComparison.Ordinal));"
+        ).SetName("Is.All.StartsWith");
+
+        yield return new TestCaseData(
+            @"var files = new[] { ""a.png"" };
+            [|Assert.That(files, Has.All.EndWith("".png""))|];",
+            @"var files = new[] { ""a.png"" };
+            files.ShouldAllBe(item => item.EndsWith("".png"", StringComparison.Ordinal));"
+        ).SetName("Has.All.EndWith");
+
+        yield return new TestCaseData(
+            @"var files = new[] { ""a.png"" };
+            [|Assert.That(files, Is.All.EndsWith("".png""))|];",
+            @"var files = new[] { ""a.png"" };
+            files.ShouldAllBe(item => item.EndsWith("".png"", StringComparison.Ordinal));"
+        ).SetName("Is.All.EndsWith");
+
+        yield return new TestCaseData(
+            @"var lines = new[] { ""Blocked"" };
+            [|Assert.That(lines, Is.All.Contains(""Block""))|];",
+            @"var lines = new[] { ""Blocked"" };
+            lines.ShouldAllBe(item => item.Contains(""Block""));"
+        ).SetName("Is.All.Contains");
+
+        yield return new TestCaseData(
+            @"var uris = new List<string> { ""https://a"" };
+            [|Assert.Multiple(() =>
+            {
+                [|Assert.That(uris, Is.All.StartsWith(""https://""))|];
+                [|Assert.That(uris, Has.Count.EqualTo(1))|];
+            })|];",
+            @"var uris = new List<string> { ""https://a"" };
+            this.ShouldSatisfyAllConditions(
+                () => uris.ShouldAllBe(item => item.StartsWith(""https://"", StringComparison.Ordinal)),
+                () => uris.Count.ShouldBe(1));"
+        ).SetName("Is.All.StartsWith inside Assert.Multiple");
     }
 
     [Test]
@@ -1852,6 +1893,51 @@ namespace TestNamespace
                 NumberOfFixAllIterations = 1
             }
             .RunAsync(CancellationToken.None);
+    }
+
+    // `item.StartsWith(...)` on a maybe-null element would raise CS8602, and NUnit fails a null element anyway,
+    // so a sequence of string? is left for a hand conversion.
+    [Test]
+    public async Task IsAllStartsWithOnNullableStrings_IsLeftAlone()
+    {
+        var source = WrapInSampleTestMethod(@"var uris = new List<string?> { ""https://a"" };
+            [|Assert.That(uris, Is.All.StartsWith(""https://""))|];");
+        await new CodeFixTest(source, source)
+            {
+                NumberOfIncrementalIterations = 1,
+                NumberOfFixAllIterations = 1
+            }
+            .RunAsync(CancellationToken.None);
+    }
+
+    [Test]
+    public async Task IsAllStartsWithWithoutUsingSystem_QualifiesStringComparison()
+    {
+        const string source = @"using System.Collections.Generic;
+using NUnit.Framework;
+using Shouldly;
+public class TestClass
+{
+    [Test]
+    public void TestMethod()
+    {
+        var uris = new List<string> { ""https://a"" };
+        [|Assert.That(uris, Is.All.StartsWith(""https://""))|];
+    }
+}";
+        const string fixedSource = @"using System.Collections.Generic;
+using NUnit.Framework;
+using Shouldly;
+public class TestClass
+{
+    [Test]
+    public void TestMethod()
+    {
+        var uris = new List<string> { ""https://a"" };
+        uris.ShouldAllBe(item => item.StartsWith(""https://"", System.StringComparison.Ordinal));
+    }
+}";
+        await new CodeFixTest(source, fixedSource).RunAsync(CancellationToken.None);
     }
 
     private static IEnumerable<TestCaseData> AsyncAssertMultipleTestCases()
