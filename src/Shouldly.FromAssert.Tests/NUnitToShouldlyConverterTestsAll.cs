@@ -10,1122 +10,597 @@ public class NUnitToShouldlyConverterTestsAll
 {
     private static IEnumerable<TestCaseData> TestCases()
     {
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.That(contestant, Is.EqualTo(1337));",
-            ShouldlyAssertion = "contestant.ShouldBe(1337);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 54
-        }).SetName("Assert.That with Is.EqualTo");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.AreEqual(1337, contestant);",
-            ShouldlyAssertion = "contestant.ShouldBe(1337);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 46
-        }).SetName("Assert.AreEqual");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.AreNotEqual(1336, contestant);",
-            ShouldlyAssertion = "contestant.ShouldNotBe(1336);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 49
-        }).SetName("Assert.AreNotEqual");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.IsTrue(contestant > 1000);",
-            ShouldlyAssertion = "(contestant > 1000).ShouldBeTrue();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 45
-        }).SetName("Assert.IsTrue");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.IsFalse(contestant < 1000);",
-            ShouldlyAssertion = "(contestant < 1000).ShouldBeFalse();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 46
-        }).SetName("Assert.IsFalse");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "string contestant = null;",
-            NUnitAssertion = "Assert.IsNull(contestant);",
-            ShouldlyAssertion = "contestant.ShouldBeNull();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 38
-        }).SetName("Assert.IsNull");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = \"1337\";",
-            NUnitAssertion = "Assert.IsNotNull(contestant);",
-            ShouldlyAssertion = "contestant.ShouldNotBeNull();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 41
-        }).SetName("Assert.IsNotNull");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var expected = new object(); var contestant = expected;",
-            NUnitAssertion = "Assert.AreSame(expected, contestant);",
-            ShouldlyAssertion = "contestant.ShouldBeSameAs(expected);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 49
-        }).SetName("Assert.AreSame");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var expected = new object(); var contestant = new object();",
-            NUnitAssertion = "Assert.AreNotSame(expected, contestant);",
-            ShouldlyAssertion = "contestant.ShouldNotBeSameAs(expected);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 52
-        }).SetName("Assert.AreNotSame");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = \"1337\";",
-            NUnitAssertion = "Assert.IsInstanceOf<string>(contestant);",
-            ShouldlyAssertion = "contestant.ShouldBeOfType<string>();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 52
-        }).SetName("Assert.IsInstanceOf");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = \"1337\";",
-            NUnitAssertion = "Assert.IsNotInstanceOf<int>(contestant);",
-            ShouldlyAssertion = "contestant.ShouldNotBeOfType<int>();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 52
-        }).SetName("Assert.IsNotInstanceOf");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 1337, 2448, 3559 };",
-            NUnitAssertion = "Assert.Contains(1337, contestants);",
-            ShouldlyAssertion = "contestants.ShouldContain(1337);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 47
-        }).SetName("CollectionAssert.Contains");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 1337, 2448, 3559 };",
-            NUnitAssertion = "CollectionAssert.DoesNotContain(contestants, 1336);",
-            ShouldlyAssertion = "contestants.ShouldNotContain(1336);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 63
-        }).SetName("CollectionAssert.DoesNotContain");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int>();",
-            NUnitAssertion = "CollectionAssert.IsEmpty(contestants);",
-            ShouldlyAssertion = "contestants.ShouldBeEmpty();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 50
-        }).SetName("CollectionAssert.IsEmpty");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 1337 };",
-            NUnitAssertion = "CollectionAssert.IsNotEmpty(contestants);",
-            ShouldlyAssertion = "contestants.ShouldNotBeEmpty();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 53
-        }).SetName("CollectionAssert.IsNotEmpty");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.Greater(contestant, 1000);",
-            ShouldlyAssertion = "contestant.ShouldBeGreaterThan(1000);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 45
-        }).SetName("Assert.Greater");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.GreaterOrEqual(contestant, 1337);",
-            ShouldlyAssertion = "contestant.ShouldBeGreaterThanOrEqualTo(1337);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 52
-        }).SetName("Assert.GreaterOrEqual");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.Less(contestant, 2000);",
-            ShouldlyAssertion = "contestant.ShouldBeLessThan(2000);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 42
-        }).SetName("Assert.Less");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.LessOrEqual(contestant, 1337);",
-            ShouldlyAssertion = "contestant.ShouldBeLessThanOrEqualTo(1337);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 49
-        }).SetName("Assert.LessOrEqual");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = double.NaN;",
-            NUnitAssertion = "Assert.IsNaN(contestant);",
-            ShouldlyAssertion = "double.IsNaN(contestant).ShouldBeTrue();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 37
-        }).SetName("Assert.IsNaN");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var greeting = \"Hello, World!\";",
-            NUnitAssertion = "StringAssert.StartsWith(\"Hello\", greeting);",
-            ShouldlyAssertion = "greeting.ShouldStartWith(\"Hello\");",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 55
-        }).SetName("StringAssert.StartsWith");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var greeting = \"Hello, World!\";",
-            NUnitAssertion = "StringAssert.EndsWith(\"World!\", greeting);",
-            ShouldlyAssertion = "greeting.ShouldEndWith(\"World!\");",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 54
-        }).SetName("StringAssert.EndsWith");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var greeting = \"Hello, World!\";",
-            NUnitAssertion = "StringAssert.Contains(\"World\", greeting);",
-            ShouldlyAssertion = "greeting.ShouldContain(\"World\", Case.Sensitive);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 53
-        }).SetName("StringAssert.Contains");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var greeting = \"Hello, World!\";",
-            NUnitAssertion = "StringAssert.DoesNotContain(\"world\", greeting);",
-            ShouldlyAssertion = "greeting.ShouldNotContain(\"world\", Case.Sensitive);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 59
-        }).SetName("StringAssert.DoesNotContain");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "void ThrowException() { throw new ArgumentException(); }",
-            NUnitAssertion = "Assert.Throws<ArgumentException>(() => ThrowException());",
-            ShouldlyAssertion = "Should.Throw<ArgumentException>(() => ThrowException());",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 69
-        }).SetName("Assert.Throws");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "void DoNotThrow() { }",
-            NUnitAssertion = "Assert.DoesNotThrow(() => DoNotThrow());",
-            ShouldlyAssertion = "Should.NotThrow(() => DoNotThrow());",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 52
-        }).SetName("Assert.DoesNotThrow");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var expected = new List<int> { 1, 2, 3 }; var actual = new List<int> { 1, 2, 3 };",
-            NUnitAssertion = "CollectionAssert.AreEqual(expected, actual);",
-            ShouldlyAssertion = "actual.ShouldBe(expected);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 56
-        }).SetName("CollectionAssert.AreEqual");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var expected = new List<int> { 1, 2, 3 }; var actual = new List<int> { 3, 2, 1 };",
-            NUnitAssertion = "CollectionAssert.AreEquivalent(expected, actual);",
-            ShouldlyAssertion = "actual.ShouldBe(expected, ignoreOrder: true);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 61
-        }).SetName("CollectionAssert.AreEquivalent");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var collection = new List<string> { \"a\", \"b\", \"c\" };",
-            NUnitAssertion = "CollectionAssert.AllItemsAreInstancesOfType(collection, typeof(string));",
-            ShouldlyAssertion = "collection.ShouldAllBe(item => item is string);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 84
-        }).SetName("CollectionAssert.AllItemsAreInstancesOfType");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var collection = new List<string> { \"a\", \"b\", \"c\" };",
-            NUnitAssertion = "CollectionAssert.AllItemsAreNotNull(collection);",
-            ShouldlyAssertion = "collection.ShouldNotContain(item => item == null);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 60
-        }).SetName("CollectionAssert.AllItemsAreNotNull");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var collection = new List<int> { 1, 2, 3 };",
-            NUnitAssertion = "CollectionAssert.AllItemsAreUnique(collection);",
-            ShouldlyAssertion = "collection.ShouldBeUnique();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 59
-        }).SetName("CollectionAssert.AllItemsAreUnique");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.That(contestant, Is.Not.EqualTo(1336));",
-            ShouldlyAssertion = "contestant.ShouldNotBe(1336);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 58
-        }).SetName("Assert.That with Is.Not.EqualTo");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 1337, 2448, 3559 };",
-            NUnitAssertion = "Assert.That(contestants, Has.Member(1337));",
-            ShouldlyAssertion = "contestants.ShouldContain(1337);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 55
-        }).SetName("Assert.That with Has.Member");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 1337, 2448, 3559 };",
-            NUnitAssertion = "Assert.That(contestants, Has.No.Member(1336));",
-            ShouldlyAssertion = "contestants.ShouldNotContain(1336);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 58
-        }).SetName("Assert.That with Has.No.Member");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 1337, 2448, 3559 };",
-            NUnitAssertion = "Assert.That(contestants, Is.Unique);",
-            ShouldlyAssertion = "contestants.ShouldBeUnique();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 48
-        }).SetName("Assert.That with Is.Unique");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var greeting = \"Hello, World!\";",
-            NUnitAssertion = "Assert.That(greeting, Does.Contain(\"World\"));",
-            ShouldlyAssertion = "greeting.ShouldContain(\"World\", Case.Sensitive);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 57
-        }).SetName("Assert.That with Does.Contain");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var greetings = new List<string> { \"Hello\", \"World\" };",
-            NUnitAssertion = "Assert.That(greetings, Does.Contain(\"World\"));",
-            ShouldlyAssertion = "greetings.ShouldContain(\"World\");",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 58
-        }).SetName("Assert.That with Does.Contain on a collection");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "string? greeting = \"Hello, World!\";",
-            NUnitAssertion = "Assert.That(greeting, Does.Contain(\"World\"));",
-            ShouldlyAssertion = "greeting.ShouldContain(\"World\", Case.Sensitive);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 57
-        }).SetName("Assert.That with Does.Contain on a nullable string");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var greeting = \"Hello, World!\";",
-            NUnitAssertion = "Assert.That(greeting, Does.StartWith(\"Hello\"));",
-            ShouldlyAssertion = "greeting.ShouldStartWith(\"Hello\");",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 59
-        }).SetName("Assert.That with Does.StartWith");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var greeting = \"Hello, World!\";",
-            NUnitAssertion = "Assert.That(greeting, Does.EndWith(\"World!\"));",
-            ShouldlyAssertion = "greeting.ShouldEndWith(\"World!\");",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 58
-        }).SetName("Assert.That with Does.EndWith");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int>();",
-            NUnitAssertion = "Assert.That(contestants, Is.Empty);",
-            ShouldlyAssertion = "contestants.ShouldBeEmpty();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 47
-        }).SetName("Assert.That with Is.Empty");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.That(contestant, Is.EqualTo(1337), \"top caps the rows\");",
-            ShouldlyAssertion = "contestant.ShouldBe(1337, \"top caps the rows\");",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 75
-        }).SetName("Assert.That with a message");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.That(contestant, Is.EqualTo(1337), message: \"top caps the rows\");",
-            ShouldlyAssertion = "contestant.ShouldBe(1337, \"top caps the rows\");",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 84
-        }).SetName("Assert.That with a named message");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "bool? contestant = false;",
-            NUnitAssertion = "Assert.That(contestant, Is.Not.True, () => \"flag \" + contestant);",
-            ShouldlyAssertion = "contestant.ShouldNotBe(true, \"flag \" + contestant);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 77
-        }).SetName("Assert.That with a Func<string> message");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var greeting = \"Hello, World!\";",
-            NUnitAssertion = "Assert.That(greeting, Does.StartWith(\"Hello\"), \"greets\");",
-            ShouldlyAssertion = "greeting.ShouldStartWith(\"Hello\", customMessage: \"greets\");",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 69
-        }).SetName("Assert.That with a message where the string overload needs it named");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = true;",
-            NUnitAssertion = "Assert.That(contestant);",
-            ShouldlyAssertion = "contestant.ShouldBeTrue();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 36
-        }).SetName("Assert.That with a bool");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.That(contestant > 1000, \"too small\");",
-            ShouldlyAssertion = "(contestant > 1000).ShouldBeTrue(\"too small\");",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 56
-        }).SetName("Assert.That with a bool expression and message");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "string contestant = null;",
-            NUnitAssertion = "Assert.That(contestant, Is.Null);",
-            ShouldlyAssertion = "contestant.ShouldBeNull();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 45
-        }).SetName("Assert.That with Is.Null");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = \"1337\";",
-            NUnitAssertion = "Assert.That(contestant, Is.Not.Null);",
-            ShouldlyAssertion = "contestant.ShouldNotBeNull();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 49
-        }).SetName("Assert.That with Is.Not.Null");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = true;",
-            NUnitAssertion = "Assert.That(contestant, Is.True);",
-            ShouldlyAssertion = "contestant.ShouldBeTrue();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 45
-        }).SetName("Assert.That with Is.True");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "bool? contestant = true;",
-            NUnitAssertion = "Assert.That(contestant, Is.True);",
-            ShouldlyAssertion = "contestant.ShouldBe(true);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 45
-        }).SetName("Assert.That with Is.True on a nullable bool");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = false;",
-            NUnitAssertion = "Assert.That(contestant, Is.False);",
-            ShouldlyAssertion = "contestant.ShouldBeFalse();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 46
-        }).SetName("Assert.That with Is.False");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = false;",
-            NUnitAssertion = "Assert.That(contestant, Is.Not.True);",
-            ShouldlyAssertion = "contestant.ShouldNotBe(true);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 49
-        }).SetName("Assert.That with Is.Not.True");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 0L;",
-            NUnitAssertion = "Assert.That(contestant, Is.Zero);",
-            ShouldlyAssertion = "contestant.ShouldBe(0);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 45
-        }).SetName("Assert.That with Is.Zero");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 1, 3, 3, 7 };",
-            NUnitAssertion = "Assert.That(contestants, Has.Count.EqualTo(4));",
-            ShouldlyAssertion = "contestants.Count.ShouldBe(4);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 59
-        }).SetName("Assert.That with Has.Count.EqualTo");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new[] { 1, 3, 3, 7 };",
-            NUnitAssertion = "Assert.That(contestants, Has.Count.EqualTo(4));",
-            ShouldlyAssertion = "contestants.Length.ShouldBe(4);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 59
-        }).SetName("Assert.That with Has.Count.EqualTo on an array");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "List<int> contestants = null; var fallback = new List<int> { 1, 3, 3, 7 };",
-            NUnitAssertion = "Assert.That(contestants ?? fallback, Has.Count.EqualTo(4));",
-            ShouldlyAssertion = "(contestants ?? fallback).Count.ShouldBe(4);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 71
-        }).SetName("Assert.That with Has.Count.EqualTo on a coalesce expression");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var item = new Version(1, 0); var contestants = new List<Version> { item };",
-            NUnitAssertion = "Assert.That(contestants, Has.All.EqualTo(item));",
-            ShouldlyAssertion = "contestants.ShouldAllBe(item1 => object.Equals(item1, item));",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 60
-        }).SetName("Assert.That with Has.All.EqualTo does not shadow a local named item");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "string contestant = null;",
-            NUnitAssertion = "Assert.That(contestant, (Is.Null));",
-            ShouldlyAssertion = "contestant.ShouldBeNull();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 47
-        }).SetName("Assert.That with a parenthesised constraint");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "",
-            NUnitAssertion = "Assert.That(\"1337\", Has.Length.GreaterThan(3));",
-            ShouldlyAssertion = "\"1337\".Length.ShouldBeGreaterThan(3);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 59
-        }).SetName("Assert.That with Has.Length.GreaterThan on a literal is not parenthesised");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var greeting = \"Hello, World!\";",
-            NUnitAssertion = "Assert.That(greeting, Does.Not.Contain(\"world\"));",
-            ShouldlyAssertion = "greeting.ShouldNotContain(\"world\", Case.Sensitive);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 61
-        }).SetName("Assert.That with Does.Not.Contain on a string");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 1, 3, 3, 7 };",
-            NUnitAssertion = "Assert.That(contestants, Does.Not.Contain(42));",
-            ShouldlyAssertion = "contestants.ShouldNotContain(42);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 59
-        }).SetName("Assert.That with Does.Not.Contain on a collection");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 1, 3, 3, 7 };",
-            NUnitAssertion = "Assert.That(contestants, Is.EquivalentTo(new[] { 7, 3, 3, 1 }));",
-            ShouldlyAssertion = "contestants.ShouldBe(new[] { 7, 3, 3, 1 }, ignoreOrder: true);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 76
-        }).SetName("Assert.That with Is.EquivalentTo");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 7, 7 };",
-            NUnitAssertion = "Assert.That(contestants, Is.All.EqualTo(7));",
-            ShouldlyAssertion = "contestants.ShouldAllBe(item => item == 7);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 56
-        }).SetName("Assert.That with Is.All.EqualTo");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var version = new Version(1, 0); var contestants = new List<Version> { new Version(1, 0) };",
-            NUnitAssertion = "Assert.That(contestants, Has.All.EqualTo(version));",
-            ShouldlyAssertion = "contestants.ShouldAllBe(item => object.Equals(item, version));",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 63
-        }).SetName("Assert.That with Has.All.EqualTo on a reference type");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = new object(); var other = contestant;",
-            NUnitAssertion = "Assert.That(contestant, Is.SameAs(other));",
-            ShouldlyAssertion = "contestant.ShouldBeSameAs(other);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 54
-        }).SetName("Assert.That with Is.SameAs");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<string> { null };",
-            NUnitAssertion = "Assert.That(contestants, Is.All.Null);",
-            ShouldlyAssertion = "contestants.ShouldAllBe(item => item == null);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 50
-        }).SetName("Assert.That with Is.All.Null");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 1, 3 };",
-            NUnitAssertion = "Assert.That(contestants, Has.All.Matches<int>(x => x > 0));",
-            ShouldlyAssertion = "contestants.ShouldAllBe(x => x > 0);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 71
-        }).SetName("Assert.That with Has.All.Matches");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 1, 3 };",
-            NUnitAssertion = "Assert.That(contestants, Has.None.Matches<int>(x => x < 0));",
-            ShouldlyAssertion = "contestants.ShouldNotContain(x => x < 0);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 72
-        }).SetName("Assert.That with Has.None.Matches");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 1, 3 }; Predicate<int> positive = x => x > 0;",
-            NUnitAssertion = "Assert.That(contestants, Has.All.Matches(positive));",
-            ShouldlyAssertion = "contestants.ShouldAllBe(item => positive(item));",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 64
-        }).SetName("Assert.That with Has.All.Matches on a predicate variable");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.That(contestant, Is.InRange(1000, 2000));",
-            ShouldlyAssertion = "contestant.ShouldBeInRange(1000, 2000);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 60
-        }).SetName("Assert.That with Is.InRange");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 7, 3, 1 };",
-            NUnitAssertion = "Assert.That(contestants, Is.Ordered.Descending);",
-            ShouldlyAssertion = "contestants.ShouldBeInOrder(SortDirection.Descending);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 60
-        }).SetName("Assert.That with Is.Ordered.Descending");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = \"1337\";",
-            NUnitAssertion = "Assert.That(contestant, Does.Match(\"^13\"));",
-            ShouldlyAssertion = "contestant.ShouldMatch(\"^13\");",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 55
-        }).SetName("Assert.That with Does.Match");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<bool> { false };",
-            NUnitAssertion = "Assert.That(contestants, Has.All.False);",
-            ShouldlyAssertion = "contestants.ShouldAllBe(item => !item);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 52
-        }).SetName("Assert.That with Has.All.False");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = new { MediaType = \"image/png\" };",
-            NUnitAssertion = "Assert.That(contestant?.MediaType, Is.EqualTo(\"image/png\"));",
-            ShouldlyAssertion = "(contestant?.MediaType).ShouldBe(\"image/png\");",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 72
-        }).SetName("Assert.That with null-conditional receiver");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.AreEqual(true, contestant != 0 && contestant > 1000);",
-            ShouldlyAssertion = "(contestant != 0 && contestant > 1000).ShouldBe(true);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 72
-        }).SetName("Assert.AreEqual with binary receiver");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.IsTrue(contestant > 0 ? contestant < 2000 : false);",
-            ShouldlyAssertion = "(contestant > 0 ? contestant < 2000 : false).ShouldBeTrue();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 70
-        }).SetName("Assert.IsTrue with conditional receiver");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 1 };",
-            NUnitAssertion = "Assert.That(contestants, Is.Not.Empty);",
-            ShouldlyAssertion = "contestants.ShouldNotBeEmpty();",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 51
-        }).SetName("Assert.That with Is.Not.Empty");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.That(contestant, Is.GreaterThan(1000));",
-            ShouldlyAssertion = "contestant.ShouldBeGreaterThan(1000);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 58
-        }).SetName("Assert.That with Is.GreaterThan");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.That(contestant, Is.GreaterThanOrEqualTo(1337));",
-            ShouldlyAssertion = "contestant.ShouldBeGreaterThanOrEqualTo(1337);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 67
-        }).SetName("Assert.That with Is.GreaterThanOrEqualTo");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 0.9;",
-            NUnitAssertion = "Assert.That(contestant, Is.LessThan(0.95));",
-            ShouldlyAssertion = "contestant.ShouldBeLessThan(0.95);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 55
-        }).SetName("Assert.That with Is.LessThan");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = 1337;",
-            NUnitAssertion = "Assert.That(contestant, Is.LessThanOrEqualTo(1337));",
-            ShouldlyAssertion = "contestant.ShouldBeLessThanOrEqualTo(1337);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 64
-        }).SetName("Assert.That with Is.LessThanOrEqualTo");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = \"EBG\";",
-            NUnitAssertion = "Assert.That(contestant, Has.Length.LessThanOrEqualTo(3));",
-            ShouldlyAssertion = "contestant.Length.ShouldBeLessThanOrEqualTo(3);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 69
-        }).SetName("Assert.That with Has.Length.LessThanOrEqualTo");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = \"EBG\";",
-            NUnitAssertion = "Assert.That(contestant.Trim(), Has.Length.GreaterThan(0));",
-            ShouldlyAssertion = "contestant.Trim().Length.ShouldBeGreaterThan(0);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 70
-        }).SetName("Assert.That with Has.Length on invocation receiver");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestants = new List<int> { 1337 };",
-            NUnitAssertion = "Assert.That(contestants, Has.Count.GreaterThanOrEqualTo(1));",
-            ShouldlyAssertion = "contestants.Count.ShouldBeGreaterThanOrEqualTo(1);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 72
-        }).SetName("Assert.That with Has.Count.GreaterThanOrEqualTo");
-
-        yield return new TestCaseData(new TestCase
-        {
-            SetupCode = "var contestant = \"EBG\";",
-            NUnitAssertion = "Assert.That(contestant ?? \"\", Has.Length.LessThan(4));",
-            ShouldlyAssertion = "(contestant ?? \"\").Length.ShouldBeLessThan(4);",
-            Line = 12,
-            StartColumn = 13,
-            EndColumn = 66
-        }).SetName("Assert.That with Has.Length on binary receiver");
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.That(contestant, Is.EqualTo(1337))|];",
+            "contestant.ShouldBe(1337);"
+        ).SetName("Assert.That with Is.EqualTo");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.AreEqual(1337, contestant)|];",
+            "contestant.ShouldBe(1337);"
+        ).SetName("Assert.AreEqual");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.AreNotEqual(1336, contestant)|];",
+            "contestant.ShouldNotBe(1336);"
+        ).SetName("Assert.AreNotEqual");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.IsTrue(contestant > 1000)|];",
+            "(contestant > 1000).ShouldBeTrue();"
+        ).SetName("Assert.IsTrue");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.IsFalse(contestant < 1000)|];",
+            "(contestant < 1000).ShouldBeFalse();"
+        ).SetName("Assert.IsFalse");
+
+        yield return new TestCaseData(
+            "string contestant = null;",
+            "[|Assert.IsNull(contestant)|];",
+            "contestant.ShouldBeNull();"
+        ).SetName("Assert.IsNull");
+
+        yield return new TestCaseData(
+            "var contestant = \"1337\";",
+            "[|Assert.IsNotNull(contestant)|];",
+            "contestant.ShouldNotBeNull();"
+        ).SetName("Assert.IsNotNull");
+
+        yield return new TestCaseData(
+            "var expected = new object(); var contestant = expected;",
+            "[|Assert.AreSame(expected, contestant)|];",
+            "contestant.ShouldBeSameAs(expected);"
+        ).SetName("Assert.AreSame");
+
+        yield return new TestCaseData(
+            "var expected = new object(); var contestant = new object();",
+            "[|Assert.AreNotSame(expected, contestant)|];",
+            "contestant.ShouldNotBeSameAs(expected);"
+        ).SetName("Assert.AreNotSame");
+
+        yield return new TestCaseData(
+            "var contestant = \"1337\";",
+            "[|Assert.IsInstanceOf<string>(contestant)|];",
+            "contestant.ShouldBeOfType<string>();"
+        ).SetName("Assert.IsInstanceOf");
+
+        yield return new TestCaseData(
+            "var contestant = \"1337\";",
+            "[|Assert.IsNotInstanceOf<int>(contestant)|];",
+            "contestant.ShouldNotBeOfType<int>();"
+        ).SetName("Assert.IsNotInstanceOf");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1337, 2448, 3559 };",
+            "[|Assert.Contains(1337, contestants)|];",
+            "contestants.ShouldContain(1337);"
+        ).SetName("CollectionAssert.Contains");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1337, 2448, 3559 };",
+            "[|CollectionAssert.DoesNotContain(contestants, 1336)|];",
+            "contestants.ShouldNotContain(1336);"
+        ).SetName("CollectionAssert.DoesNotContain");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int>();",
+            "[|CollectionAssert.IsEmpty(contestants)|];",
+            "contestants.ShouldBeEmpty();"
+        ).SetName("CollectionAssert.IsEmpty");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1337 };",
+            "[|CollectionAssert.IsNotEmpty(contestants)|];",
+            "contestants.ShouldNotBeEmpty();"
+        ).SetName("CollectionAssert.IsNotEmpty");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.Greater(contestant, 1000)|];",
+            "contestant.ShouldBeGreaterThan(1000);"
+        ).SetName("Assert.Greater");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.GreaterOrEqual(contestant, 1337)|];",
+            "contestant.ShouldBeGreaterThanOrEqualTo(1337);"
+        ).SetName("Assert.GreaterOrEqual");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.Less(contestant, 2000)|];",
+            "contestant.ShouldBeLessThan(2000);"
+        ).SetName("Assert.Less");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.LessOrEqual(contestant, 1337)|];",
+            "contestant.ShouldBeLessThanOrEqualTo(1337);"
+        ).SetName("Assert.LessOrEqual");
+
+        yield return new TestCaseData(
+            "var contestant = double.NaN;",
+            "[|Assert.IsNaN(contestant)|];",
+            "double.IsNaN(contestant).ShouldBeTrue();"
+        ).SetName("Assert.IsNaN");
+
+        yield return new TestCaseData(
+            "var greeting = \"Hello, World!\";",
+            "[|StringAssert.StartsWith(\"Hello\", greeting)|];",
+            "greeting.ShouldStartWith(\"Hello\");"
+        ).SetName("StringAssert.StartsWith");
+
+        yield return new TestCaseData(
+            "var greeting = \"Hello, World!\";",
+            "[|StringAssert.EndsWith(\"World!\", greeting)|];",
+            "greeting.ShouldEndWith(\"World!\");"
+        ).SetName("StringAssert.EndsWith");
+
+        yield return new TestCaseData(
+            "var greeting = \"Hello, World!\";",
+            "[|StringAssert.Contains(\"World\", greeting)|];",
+            "greeting.ShouldContain(\"World\", Case.Sensitive);"
+        ).SetName("StringAssert.Contains");
+
+        yield return new TestCaseData(
+            "var greeting = \"Hello, World!\";",
+            "[|StringAssert.DoesNotContain(\"world\", greeting)|];",
+            "greeting.ShouldNotContain(\"world\", Case.Sensitive);"
+        ).SetName("StringAssert.DoesNotContain");
+
+        yield return new TestCaseData(
+            "void ThrowException() { throw new ArgumentException(); }",
+            "[|Assert.Throws<ArgumentException>(() => ThrowException())|];",
+            "Should.Throw<ArgumentException>(() => ThrowException());"
+        ).SetName("Assert.Throws");
+
+        yield return new TestCaseData(
+            "void DoNotThrow() { }",
+            "[|Assert.DoesNotThrow(() => DoNotThrow())|];",
+            "Should.NotThrow(() => DoNotThrow());"
+        ).SetName("Assert.DoesNotThrow");
+
+        yield return new TestCaseData(
+            "var expected = new List<int> { 1, 2, 3 }; var actual = new List<int> { 1, 2, 3 };",
+            "[|CollectionAssert.AreEqual(expected, actual)|];",
+            "actual.ShouldBe(expected);"
+        ).SetName("CollectionAssert.AreEqual");
+
+        yield return new TestCaseData(
+            "var expected = new List<int> { 1, 2, 3 }; var actual = new List<int> { 3, 2, 1 };",
+            "[|CollectionAssert.AreEquivalent(expected, actual)|];",
+            "actual.ShouldBe(expected, ignoreOrder: true);"
+        ).SetName("CollectionAssert.AreEquivalent");
+
+        yield return new TestCaseData(
+            "var collection = new List<string> { \"a\", \"b\", \"c\" };",
+            "[|CollectionAssert.AllItemsAreInstancesOfType(collection, typeof(string))|];",
+            "collection.ShouldAllBe(item => item is string);"
+        ).SetName("CollectionAssert.AllItemsAreInstancesOfType");
+
+        yield return new TestCaseData(
+            "var collection = new List<string> { \"a\", \"b\", \"c\" };",
+            "[|CollectionAssert.AllItemsAreNotNull(collection)|];",
+            "collection.ShouldNotContain(item => item == null);"
+        ).SetName("CollectionAssert.AllItemsAreNotNull");
+
+        yield return new TestCaseData(
+            "var collection = new List<int> { 1, 2, 3 };",
+            "[|CollectionAssert.AllItemsAreUnique(collection)|];",
+            "collection.ShouldBeUnique();"
+        ).SetName("CollectionAssert.AllItemsAreUnique");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.That(contestant, Is.Not.EqualTo(1336))|];",
+            "contestant.ShouldNotBe(1336);"
+        ).SetName("Assert.That with Is.Not.EqualTo");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1337, 2448, 3559 };",
+            "[|Assert.That(contestants, Has.Member(1337))|];",
+            "contestants.ShouldContain(1337);"
+        ).SetName("Assert.That with Has.Member");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1337, 2448, 3559 };",
+            "[|Assert.That(contestants, Has.No.Member(1336))|];",
+            "contestants.ShouldNotContain(1336);"
+        ).SetName("Assert.That with Has.No.Member");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1337, 2448, 3559 };",
+            "[|Assert.That(contestants, Is.Unique)|];",
+            "contestants.ShouldBeUnique();"
+        ).SetName("Assert.That with Is.Unique");
+
+        yield return new TestCaseData(
+            "var greeting = \"Hello, World!\";",
+            "[|Assert.That(greeting, Does.Contain(\"World\"))|];",
+            "greeting.ShouldContain(\"World\", Case.Sensitive);"
+        ).SetName("Assert.That with Does.Contain");
+
+        yield return new TestCaseData(
+            "var greetings = new List<string> { \"Hello\", \"World\" };",
+            "[|Assert.That(greetings, Does.Contain(\"World\"))|];",
+            "greetings.ShouldContain(\"World\");"
+        ).SetName("Assert.That with Does.Contain on a collection");
+
+        yield return new TestCaseData(
+            "string? greeting = \"Hello, World!\";",
+            "[|Assert.That(greeting, Does.Contain(\"World\"))|];",
+            "greeting.ShouldContain(\"World\", Case.Sensitive);"
+        ).SetName("Assert.That with Does.Contain on a nullable string");
+
+        yield return new TestCaseData(
+            "var greeting = \"Hello, World!\";",
+            "[|Assert.That(greeting, Does.StartWith(\"Hello\"))|];",
+            "greeting.ShouldStartWith(\"Hello\");"
+        ).SetName("Assert.That with Does.StartWith");
+
+        yield return new TestCaseData(
+            "var greeting = \"Hello, World!\";",
+            "[|Assert.That(greeting, Does.EndWith(\"World!\"))|];",
+            "greeting.ShouldEndWith(\"World!\");"
+        ).SetName("Assert.That with Does.EndWith");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int>();",
+            "[|Assert.That(contestants, Is.Empty)|];",
+            "contestants.ShouldBeEmpty();"
+        ).SetName("Assert.That with Is.Empty");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.That(contestant, Is.EqualTo(1337), \"top caps the rows\")|];",
+            "contestant.ShouldBe(1337, \"top caps the rows\");"
+        ).SetName("Assert.That with a message");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.That(contestant, Is.EqualTo(1337), message: \"top caps the rows\")|];",
+            "contestant.ShouldBe(1337, \"top caps the rows\");"
+        ).SetName("Assert.That with a named message");
+
+        yield return new TestCaseData(
+            "bool? contestant = false;",
+            "[|Assert.That(contestant, Is.Not.True, () => \"flag \" + contestant)|];",
+            "contestant.ShouldNotBe(true, \"flag \" + contestant);"
+        ).SetName("Assert.That with a Func<string> message");
+
+        yield return new TestCaseData(
+            "var greeting = \"Hello, World!\";",
+            "[|Assert.That(greeting, Does.StartWith(\"Hello\"), \"greets\")|];",
+            "greeting.ShouldStartWith(\"Hello\", customMessage: \"greets\");"
+        ).SetName("Assert.That with a message where the string overload needs it named");
+
+        yield return new TestCaseData(
+            "var contestant = true;",
+            "[|Assert.That(contestant)|];",
+            "contestant.ShouldBeTrue();"
+        ).SetName("Assert.That with a bool");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.That(contestant > 1000, \"too small\")|];",
+            "(contestant > 1000).ShouldBeTrue(\"too small\");"
+        ).SetName("Assert.That with a bool expression and message");
+
+        yield return new TestCaseData(
+            "string contestant = null;",
+            "[|Assert.That(contestant, Is.Null)|];",
+            "contestant.ShouldBeNull();"
+        ).SetName("Assert.That with Is.Null");
+
+        yield return new TestCaseData(
+            "var contestant = \"1337\";",
+            "[|Assert.That(contestant, Is.Not.Null)|];",
+            "contestant.ShouldNotBeNull();"
+        ).SetName("Assert.That with Is.Not.Null");
+
+        yield return new TestCaseData(
+            "var contestant = true;",
+            "[|Assert.That(contestant, Is.True)|];",
+            "contestant.ShouldBeTrue();"
+        ).SetName("Assert.That with Is.True");
+
+        yield return new TestCaseData(
+            "bool? contestant = true;",
+            "[|Assert.That(contestant, Is.True)|];",
+            "contestant.ShouldBe(true);"
+        ).SetName("Assert.That with Is.True on a nullable bool");
+
+        yield return new TestCaseData(
+            "var contestant = false;",
+            "[|Assert.That(contestant, Is.False)|];",
+            "contestant.ShouldBeFalse();"
+        ).SetName("Assert.That with Is.False");
+
+        yield return new TestCaseData(
+            "var contestant = false;",
+            "[|Assert.That(contestant, Is.Not.True)|];",
+            "contestant.ShouldNotBe(true);"
+        ).SetName("Assert.That with Is.Not.True");
+
+        yield return new TestCaseData(
+            "var contestant = 0L;",
+            "[|Assert.That(contestant, Is.Zero)|];",
+            "contestant.ShouldBe(0);"
+        ).SetName("Assert.That with Is.Zero");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1, 3, 3, 7 };",
+            "[|Assert.That(contestants, Has.Count.EqualTo(4))|];",
+            "contestants.Count.ShouldBe(4);"
+        ).SetName("Assert.That with Has.Count.EqualTo");
+
+        yield return new TestCaseData(
+            "var contestants = new[] { 1, 3, 3, 7 };",
+            "[|Assert.That(contestants, Has.Count.EqualTo(4))|];",
+            "contestants.Length.ShouldBe(4);"
+        ).SetName("Assert.That with Has.Count.EqualTo on an array");
+
+        yield return new TestCaseData(
+            "List<int> contestants = null; var fallback = new List<int> { 1, 3, 3, 7 };",
+            "[|Assert.That(contestants ?? fallback, Has.Count.EqualTo(4))|];",
+            "(contestants ?? fallback).Count.ShouldBe(4);"
+        ).SetName("Assert.That with Has.Count.EqualTo on a coalesce expression");
+
+        yield return new TestCaseData(
+            "var item = new Version(1, 0); var contestants = new List<Version> { item };",
+            "[|Assert.That(contestants, Has.All.EqualTo(item))|];",
+            "contestants.ShouldAllBe(item1 => object.Equals(item1, item));"
+        ).SetName("Assert.That with Has.All.EqualTo does not shadow a local named item");
+
+        yield return new TestCaseData(
+            "string contestant = null;",
+            "[|Assert.That(contestant, (Is.Null))|];",
+            "contestant.ShouldBeNull();"
+        ).SetName("Assert.That with a parenthesised constraint");
+
+        yield return new TestCaseData(
+            "",
+            "[|Assert.That(\"1337\", Has.Length.GreaterThan(3))|];",
+            "\"1337\".Length.ShouldBeGreaterThan(3);"
+        ).SetName("Assert.That with Has.Length.GreaterThan on a literal is not parenthesised");
+
+        yield return new TestCaseData(
+            "var greeting = \"Hello, World!\";",
+            "[|Assert.That(greeting, Does.Not.Contain(\"world\"))|];",
+            "greeting.ShouldNotContain(\"world\", Case.Sensitive);"
+        ).SetName("Assert.That with Does.Not.Contain on a string");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1, 3, 3, 7 };",
+            "[|Assert.That(contestants, Does.Not.Contain(42))|];",
+            "contestants.ShouldNotContain(42);"
+        ).SetName("Assert.That with Does.Not.Contain on a collection");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1, 3, 3, 7 };",
+            "[|Assert.That(contestants, Is.EquivalentTo(new[] { 7, 3, 3, 1 }))|];",
+            "contestants.ShouldBe(new[] { 7, 3, 3, 1 }, ignoreOrder: true);"
+        ).SetName("Assert.That with Is.EquivalentTo");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 7, 7 };",
+            "[|Assert.That(contestants, Is.All.EqualTo(7))|];",
+            "contestants.ShouldAllBe(item => item == 7);"
+        ).SetName("Assert.That with Is.All.EqualTo");
+
+        yield return new TestCaseData(
+            "var version = new Version(1, 0); var contestants = new List<Version> { new Version(1, 0) };",
+            "[|Assert.That(contestants, Has.All.EqualTo(version))|];",
+            "contestants.ShouldAllBe(item => object.Equals(item, version));"
+        ).SetName("Assert.That with Has.All.EqualTo on a reference type");
+
+        yield return new TestCaseData(
+            "var contestant = new object(); var other = contestant;",
+            "[|Assert.That(contestant, Is.SameAs(other))|];",
+            "contestant.ShouldBeSameAs(other);"
+        ).SetName("Assert.That with Is.SameAs");
+
+        yield return new TestCaseData(
+            "var contestants = new List<string> { null };",
+            "[|Assert.That(contestants, Is.All.Null)|];",
+            "contestants.ShouldAllBe(item => item == null);"
+        ).SetName("Assert.That with Is.All.Null");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1, 3 };",
+            "[|Assert.That(contestants, Has.All.Matches<int>(x => x > 0))|];",
+            "contestants.ShouldAllBe(x => x > 0);"
+        ).SetName("Assert.That with Has.All.Matches");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1, 3 };",
+            "[|Assert.That(contestants, Has.None.Matches<int>(x => x < 0))|];",
+            "contestants.ShouldNotContain(x => x < 0);"
+        ).SetName("Assert.That with Has.None.Matches");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1, 3 }; Predicate<int> positive = x => x > 0;",
+            "[|Assert.That(contestants, Has.All.Matches(positive))|];",
+            "contestants.ShouldAllBe(item => positive(item));"
+        ).SetName("Assert.That with Has.All.Matches on a predicate variable");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.That(contestant, Is.InRange(1000, 2000))|];",
+            "contestant.ShouldBeInRange(1000, 2000);"
+        ).SetName("Assert.That with Is.InRange");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 7, 3, 1 };",
+            "[|Assert.That(contestants, Is.Ordered.Descending)|];",
+            "contestants.ShouldBeInOrder(SortDirection.Descending);"
+        ).SetName("Assert.That with Is.Ordered.Descending");
+
+        yield return new TestCaseData(
+            "var contestant = \"1337\";",
+            "[|Assert.That(contestant, Does.Match(\"^13\"))|];",
+            "contestant.ShouldMatch(\"^13\");"
+        ).SetName("Assert.That with Does.Match");
+
+        yield return new TestCaseData(
+            "var contestants = new List<bool> { false };",
+            "[|Assert.That(contestants, Has.All.False)|];",
+            "contestants.ShouldAllBe(item => !item);"
+        ).SetName("Assert.That with Has.All.False");
+
+        yield return new TestCaseData(
+            "var contestant = new { MediaType = \"image/png\" };",
+            "[|Assert.That(contestant?.MediaType, Is.EqualTo(\"image/png\"))|];",
+            "(contestant?.MediaType).ShouldBe(\"image/png\");"
+        ).SetName("Assert.That with null-conditional receiver");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.AreEqual(true, contestant != 0 && contestant > 1000)|];",
+            "(contestant != 0 && contestant > 1000).ShouldBe(true);"
+        ).SetName("Assert.AreEqual with binary receiver");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.IsTrue(contestant > 0 ? contestant < 2000 : false)|];",
+            "(contestant > 0 ? contestant < 2000 : false).ShouldBeTrue();"
+        ).SetName("Assert.IsTrue with conditional receiver");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1 };",
+            "[|Assert.That(contestants, Is.Not.Empty)|];",
+            "contestants.ShouldNotBeEmpty();"
+        ).SetName("Assert.That with Is.Not.Empty");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.That(contestant, Is.GreaterThan(1000))|];",
+            "contestant.ShouldBeGreaterThan(1000);"
+        ).SetName("Assert.That with Is.GreaterThan");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.That(contestant, Is.GreaterThanOrEqualTo(1337))|];",
+            "contestant.ShouldBeGreaterThanOrEqualTo(1337);"
+        ).SetName("Assert.That with Is.GreaterThanOrEqualTo");
+
+        yield return new TestCaseData(
+            "var contestant = 0.9;",
+            "[|Assert.That(contestant, Is.LessThan(0.95))|];",
+            "contestant.ShouldBeLessThan(0.95);"
+        ).SetName("Assert.That with Is.LessThan");
+
+        yield return new TestCaseData(
+            "var contestant = 1337;",
+            "[|Assert.That(contestant, Is.LessThanOrEqualTo(1337))|];",
+            "contestant.ShouldBeLessThanOrEqualTo(1337);"
+        ).SetName("Assert.That with Is.LessThanOrEqualTo");
+
+        yield return new TestCaseData(
+            "var contestant = \"EBG\";",
+            "[|Assert.That(contestant, Has.Length.LessThanOrEqualTo(3))|];",
+            "contestant.Length.ShouldBeLessThanOrEqualTo(3);"
+        ).SetName("Assert.That with Has.Length.LessThanOrEqualTo");
+
+        yield return new TestCaseData(
+            "var contestant = \"EBG\";",
+            "[|Assert.That(contestant.Trim(), Has.Length.GreaterThan(0))|];",
+            "contestant.Trim().Length.ShouldBeGreaterThan(0);"
+        ).SetName("Assert.That with Has.Length on invocation receiver");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1337 };",
+            "[|Assert.That(contestants, Has.Count.GreaterThanOrEqualTo(1))|];",
+            "contestants.Count.ShouldBeGreaterThanOrEqualTo(1);"
+        ).SetName("Assert.That with Has.Count.GreaterThanOrEqualTo");
+
+        yield return new TestCaseData(
+            "var contestant = \"EBG\";",
+            "[|Assert.That(contestant ?? \"\", Has.Length.LessThan(4))|];",
+            "(contestant ?? \"\").Length.ShouldBeLessThan(4);"
+        ).SetName("Assert.That with Has.Length on binary receiver");
     }
 
 
     [Test]
     [TestCaseSource(nameof(TestCases))]
-    public async Task TestConversion(TestCase testCase)
+    public async Task TestConversion(string setup, string before, string after)
     {
-        var test = $@"
-using NUnit.Framework;using System.Collections.Generic;using System;
-using Shouldly;
-namespace TestNamespace
-{{
-    public class TestClass
-    {{
-        [Test]
-        public void TestMethod()
-        {{
-            {testCase.SetupCode}
-            {testCase.NUnitAssertion}
-        }}
-    }}
-}}";
-
-        var expected = $@"
-using NUnit.Framework;using System.Collections.Generic;using System;
-using Shouldly;
-namespace TestNamespace
-{{
-    public class TestClass
-    {{
-        [Test]
-        public void TestMethod()
-        {{
-            {testCase.SetupCode}
-            {testCase.ShouldlyAssertion}
-        }}
-    }}
-}}";
-
-        var codeFixTest = new CodeFixTest(test, expected,
-            CSharpAnalyzerVerifier<NUnitToShouldlyAnalyzer, NUnitVerifier>
-                .Diagnostic(NUnitToShouldlyAnalyzer.DiagnosticId)
-                .WithSpan(testCase.Line, testCase.StartColumn, testCase.Line, testCase.EndColumn));
-
-        await codeFixTest.RunAsync(CancellationToken.None);
+        await new CodeFixTest(
+                TestSource.InTestMethod(setup + "\n            " + before),
+                TestSource.InTestMethod(setup + "\n            " + after))
+            .RunAsync(CancellationToken.None);
     }
 
     [Test]
     public async Task AssertThatWithAndChain_SplitsIntoOneAssertPerLink()
     {
-        var test = @"
-using NUnit.Framework;
-using Shouldly;
-namespace TestNamespace
-{
-    public class TestClass
-    {
-        [Test]
-        public void TestMethod()
-        {
-            var path = ""/img/logo.png"";
+        await new CodeFixTest(
+                TestSource.InTestMethod(@"var path = ""/img/logo.png"";
             // the path is a png under root
-            Assert.That(path, Does.StartWith(""/"").And.EndWith("".png""));
-        }
-    }
-}";
-
-        var expected = @"
-using NUnit.Framework;
-using Shouldly;
-namespace TestNamespace
-{
-    public class TestClass
-    {
-        [Test]
-        public void TestMethod()
-        {
-            var path = ""/img/logo.png"";
+            [|Assert.That(path, Does.StartWith(""/"").And.EndWith("".png""))|];"),
+                TestSource.InTestMethod(@"var path = ""/img/logo.png"";
             // the path is a png under root
             path.ShouldStartWith(""/"");
-            path.ShouldEndWith("".png"");
-        }
-    }
-}";
-
-        await new CodeFixTest(test, expected,
-                CSharpAnalyzerVerifier<NUnitToShouldlyAnalyzer, NUnitVerifier>
-                    .Diagnostic(NUnitToShouldlyAnalyzer.DiagnosticId)
-                    .WithSpan(13, 13, 13, 71))
+            path.ShouldEndWith("".png"");"))
             .RunAsync(CancellationToken.None);
     }
 
     [Test]
     public async Task AssertThatWithAndChainOfStringContains_KeepsCaseSensitivity()
     {
-        var test = @"
-using NUnit.Framework;
-using Shouldly;
-namespace TestNamespace
-{
-    public class TestClass
-    {
-        [Test]
-        public void TestMethod()
-        {
-            var path = ""/img/logo.png"";
-            Assert.That(path, Does.Contain(""img"").And.Contain(""logo""));
-        }
-    }
-}";
-
-        var expected = @"
-using NUnit.Framework;
-using Shouldly;
-namespace TestNamespace
-{
-    public class TestClass
-    {
-        [Test]
-        public void TestMethod()
-        {
-            var path = ""/img/logo.png"";
+        await new CodeFixTest(
+                TestSource.InTestMethod(@"var path = ""/img/logo.png"";
+            [|Assert.That(path, Does.Contain(""img"").And.Contain(""logo""))|];"),
+                TestSource.InTestMethod(@"var path = ""/img/logo.png"";
             path.ShouldContain(""img"", Case.Sensitive);
-            path.ShouldContain(""logo"", Case.Sensitive);
-        }
-    }
-}";
-
-        await new CodeFixTest(test, expected,
-                CSharpAnalyzerVerifier<NUnitToShouldlyAnalyzer, NUnitVerifier>
-                    .Diagnostic(NUnitToShouldlyAnalyzer.DiagnosticId)
-                    .WithSpan(12, 13, 12, 71))
+            path.ShouldContain(""logo"", Case.Sensitive);"))
             .RunAsync(CancellationToken.None);
     }
 
     [Test]
     public async Task AssertThatWithAndChainAndMessage_PassesTheMessageToEveryLink()
     {
-        var test = @"
-using NUnit.Framework;
-using Shouldly;
-namespace TestNamespace
-{
-    public class TestClass
-    {
-        [Test]
-        public void TestMethod()
-        {
-            var contestant = 1337;
-            Assert.That(contestant, Is.Not.Zero.And.EqualTo(1337), ""leet"");
-        }
-    }
-}";
-
-        var expected = @"
-using NUnit.Framework;
-using Shouldly;
-namespace TestNamespace
-{
-    public class TestClass
-    {
-        [Test]
-        public void TestMethod()
-        {
-            var contestant = 1337;
+        await new CodeFixTest(
+                TestSource.InTestMethod(@"var contestant = 1337;
+            [|Assert.That(contestant, Is.Not.Zero.And.EqualTo(1337), ""leet"")|];"),
+                TestSource.InTestMethod(@"var contestant = 1337;
             contestant.ShouldNotBe(0, ""leet"");
-            contestant.ShouldBe(1337, ""leet"");
-        }
-    }
-}";
-
-        await new CodeFixTest(test, expected,
-                CSharpAnalyzerVerifier<NUnitToShouldlyAnalyzer, NUnitVerifier>
-                    .Diagnostic(NUnitToShouldlyAnalyzer.DiagnosticId)
-                    .WithSpan(12, 13, 12, 75))
+            contestant.ShouldBe(1337, ""leet"");"))
             .RunAsync(CancellationToken.None);
     }
 
     [Test]
     public async Task AssertThatWithAndChainInEmbeddedStatement_WrapsInBlock()
     {
-        var test = @"
-using NUnit.Framework;
-using Shouldly;
-namespace TestNamespace
-{
-    public class TestClass
-    {
-        [Test]
-        public void TestMethod()
-        {
-            var contestants = new System.Collections.Generic.List<int> { 1, 3, 3, 7 };
+        await new CodeFixTest(
+                TestSource.InTestMethod(@"var contestants = new List<int> { 1, 3, 3, 7 };
             if (contestants.Count > 0)
-                Assert.That(contestants, Has.Member(1).And.Member(7));
-        }
-    }
-}";
-
-        var expected = @"
-using NUnit.Framework;
-using Shouldly;
-namespace TestNamespace
-{
-    public class TestClass
-    {
-        [Test]
-        public void TestMethod()
-        {
-            var contestants = new System.Collections.Generic.List<int> { 1, 3, 3, 7 };
+                [|Assert.That(contestants, Has.Member(1).And.Member(7))|];"),
+                TestSource.InTestMethod(@"var contestants = new List<int> { 1, 3, 3, 7 };
             if (contestants.Count > 0)
             {
                 contestants.ShouldContain(1);
                 contestants.ShouldContain(7);
-            }
-        }
-    }
-}";
-
-        await new CodeFixTest(test, expected,
-                CSharpAnalyzerVerifier<NUnitToShouldlyAnalyzer, NUnitVerifier>
-                    .Diagnostic(NUnitToShouldlyAnalyzer.DiagnosticId)
-                    .WithSpan(13, 17, 13, 70))
+            }"))
             .RunAsync(CancellationToken.None);
     }
 
     [Test]
     public async Task AssertThatWithConditionalConstraint_BecomesIfElse()
     {
-        var test = @"
-using NUnit.Framework;
-using Shouldly;
-namespace TestNamespace
-{
-    public class TestClass
-    {
-        [Test]
-        public void TestMethod()
-        {
-            var expected = true;
+        await new CodeFixTest(
+                TestSource.InTestMethod(@"var expected = true;
             var candidate = new object();
             var picked = candidate;
-            Assert.That(picked, expected ? Is.SameAs(candidate) : Is.Null);
-        }
-    }
-}";
-
-        var expected = @"
-using NUnit.Framework;
-using Shouldly;
-namespace TestNamespace
-{
-    public class TestClass
-    {
-        [Test]
-        public void TestMethod()
-        {
-            var expected = true;
+            [|Assert.That(picked, expected ? Is.SameAs(candidate) : Is.Null)|];"),
+                TestSource.InTestMethod(@"var expected = true;
             var candidate = new object();
             var picked = candidate;
             if (expected)
@@ -1135,64 +610,24 @@ namespace TestNamespace
             else
             {
                 picked.ShouldBeNull();
-            }
-        }
-    }
-}";
-
-        await new CodeFixTest(test, expected,
-                CSharpAnalyzerVerifier<NUnitToShouldlyAnalyzer, NUnitVerifier>
-                    .Diagnostic(NUnitToShouldlyAnalyzer.DiagnosticId)
-                    .WithSpan(14, 13, 14, 75))
+            }"))
             .RunAsync(CancellationToken.None);
     }
 
     [Test]
     public async Task AssertThatWithMessageInLambda_ReplacesTheExpression()
     {
-        var test = @"
-using System;
-using NUnit.Framework;
-using Shouldly;
-namespace TestNamespace
-{
-    public class TestClass
-    {
-        [Test]
-        public void TestMethod()
-        {
-            string contestant = null;
-            Action check = () => Assert.That(contestant, Is.Null, ""unset"");
-            check();
-        }
-    }
-}";
-
-        var expected = @"
-using System;
-using NUnit.Framework;
-using Shouldly;
-namespace TestNamespace
-{
-    public class TestClass
-    {
-        [Test]
-        public void TestMethod()
-        {
-            string contestant = null;
+        await new CodeFixTest(
+                TestSource.InTestMethod(@"string contestant = null;
+            Action check = () => [|Assert.That(contestant, Is.Null, ""unset"")|];
+            check();"),
+                TestSource.InTestMethod(@"string contestant = null;
             Action check = () => contestant.ShouldBeNull(""unset"");
-            check();
-        }
-    }
-}";
-
-        await new CodeFixTest(test, expected,
-                CSharpAnalyzerVerifier<NUnitToShouldlyAnalyzer, NUnitVerifier>
-                    .Diagnostic(NUnitToShouldlyAnalyzer.DiagnosticId)
-                    .WithSpan(13, 34, 13, 75))
+            check();"))
             .RunAsync(CancellationToken.None);
     }
 
+    // A full document: the test class declares its own Assert* helper.
     [Test]
     public async Task UnqualifiedMethodStartingWithAssert_IsNotFlagged()
     {
@@ -1215,6 +650,7 @@ namespace TestNamespace
         await new CodeFixTest(test, test).RunAsync(CancellationToken.None);
     }
 
+    // A full document: it declares its own Assert class and has no NUnit using.
     [Test]
     public async Task UserDefinedAssertClass_IsNotFlagged()
     {
@@ -1238,6 +674,7 @@ namespace TestNamespace
         await new CodeFixTest(test, test).RunAsync(CancellationToken.None);
     }
 
+    // A full document: it needs a using static.
     [Test]
     public async Task UsingStaticNUnitAssert_IsFlagged()
     {
@@ -1251,20 +688,15 @@ namespace TestNamespace
         [Test]
         public void TestMethod()
         {
-            That(1337, Is.EqualTo(1337));
+            [|That(1337, Is.EqualTo(1337))|];
         }
     }
 }";
 
-        var analyzerTest = new AnalyzerOnlyTest(test);
-        analyzerTest.ExpectedDiagnostics.Add(
-            CSharpAnalyzerVerifier<NUnitToShouldlyAnalyzer, NUnitVerifier>
-                .Diagnostic(NUnitToShouldlyAnalyzer.DiagnosticId)
-                .WithSpan(11, 13, 11, 41));
-
-        await analyzerTest.RunAsync(CancellationToken.None);
+        await new AnalyzerOnlyTest(test).RunAsync(CancellationToken.None);
     }
 
+    // A full document: it needs a using static.
     [Test]
     public async Task UsingStaticMultipleInStaticMethod_IsNotFlagged()
     {
@@ -1286,9 +718,7 @@ namespace TestNamespace
     }
 }";
 
-        var analyzerTest = new AnalyzerOnlyTest(test);
-
-        await analyzerTest.RunAsync(CancellationToken.None);
+        await new AnalyzerOnlyTest(test).RunAsync(CancellationToken.None);
     }
 
     private static IEnumerable<TestCaseData> AssertMultipleTestCases()
@@ -1500,44 +930,10 @@ namespace TestNamespace
     [Test]
     public async Task AwaitReceiver_IsParenthesised()
     {
-        var test = @"
-using NUnit.Framework;using System.Threading.Tasks;
-using Shouldly;
-namespace TestNamespace
-{
-    public class TestClass
-    {
-        [Test]
-        public async Task TestMethod()
-        {
-            Assert.That(await GetStatusAsync(), Is.EqualTo(""Ordered""));
-        }
-
-        private static Task<string> GetStatusAsync() => Task.FromResult(""Ordered"");
-    }
-}";
-
-        var expected = @"
-using NUnit.Framework;using System.Threading.Tasks;
-using Shouldly;
-namespace TestNamespace
-{
-    public class TestClass
-    {
-        [Test]
-        public async Task TestMethod()
-        {
-            (await GetStatusAsync()).ShouldBe(""Ordered"");
-        }
-
-        private static Task<string> GetStatusAsync() => Task.FromResult(""Ordered"");
-    }
-}";
-
-        await new CodeFixTest(test, expected,
-                CSharpAnalyzerVerifier<NUnitToShouldlyAnalyzer, NUnitVerifier>
-                    .Diagnostic(NUnitToShouldlyAnalyzer.DiagnosticId)
-                    .WithSpan(11, 13, 11, 71))
+        const string signature = "public async Task TestMethod()";
+        await new CodeFixTest(
+                TestSource.InSampleTest(@"[|Assert.That(await GetStatusAsync(), Is.EqualTo(""Ordered""))|];", signature),
+                TestSource.InSampleTest(@"(await GetStatusAsync()).ShouldBe(""Ordered"");", signature))
             .RunAsync(CancellationToken.None);
     }
 
@@ -1911,6 +1307,7 @@ namespace TestNamespace
             .RunAsync(CancellationToken.None);
     }
 
+    // A full document: it must not have a using System.
     [Test]
     public async Task IsAllStartsWithWithoutUsingSystem_QualifiesStringComparison()
     {
