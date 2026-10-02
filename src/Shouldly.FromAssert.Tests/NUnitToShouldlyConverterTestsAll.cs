@@ -1,8 +1,8 @@
-﻿using System.Collections.Immutable;
-using Microsoft.CodeAnalysis.CSharp.Testing;
+﻿using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 using Microsoft.CodeAnalysis.Testing.Verifiers;
 using NUnit.Framework;
+using Shouldly.FromAssert.Tests.Infrastructure;
 
 namespace Shouldly.FromAssert.Tests;
 
@@ -914,9 +914,6 @@ namespace TestNamespace
                 .WithSpan(testCase.Line, testCase.StartColumn, testCase.Line, testCase.EndColumn));
 
         await codeFixTest.RunAsync(CancellationToken.None);
-        var compilerDiagnostics = codeFixTest.CompilerDiagnostics;
-
-        // Add any additional assertions here if needed
     }
 
     [Test]
@@ -1259,11 +1256,7 @@ namespace TestNamespace
     }
 }";
 
-        var analyzerTest = new CSharpAnalyzerTest<NUnitToShouldlyAnalyzer, NUnitVerifier>
-        {
-            TestCode = test,
-            ReferenceAssemblies = CodeFixTest.References
-        };
+        var analyzerTest = new AnalyzerOnlyTest(test);
         analyzerTest.ExpectedDiagnostics.Add(
             CSharpAnalyzerVerifier<NUnitToShouldlyAnalyzer, NUnitVerifier>
                 .Diagnostic(NUnitToShouldlyAnalyzer.DiagnosticId)
@@ -1293,11 +1286,7 @@ namespace TestNamespace
     }
 }";
 
-        var analyzerTest = new CSharpAnalyzerTest<NUnitToShouldlyAnalyzer, NUnitVerifier>
-        {
-            TestCode = test,
-            ReferenceAssemblies = CodeFixTest.References
-        };
+        var analyzerTest = new AnalyzerOnlyTest(test);
 
         await analyzerTest.RunAsync(CancellationToken.None);
     }
@@ -1408,7 +1397,7 @@ namespace TestNamespace
     [TestCaseSource(nameof(AssertMultipleTestCases))]
     public async Task TestAssertMultipleConversion(string before, string after)
     {
-        var codeFixTest = new CodeFixTest(WrapInTestMethod(before), WrapInTestMethod(after));
+        var codeFixTest = new CodeFixTest(TestSource.InTestMethod(before), TestSource.InTestMethod(after));
         // Statements left as NUnit asserts are still reported after the fix.
         codeFixTest.FixedState.MarkupHandling = MarkupMode.Allow;
         // ...so fix-all takes a second, no-op pass over them once the Assert.Multiple around them has gone.
@@ -1423,7 +1412,7 @@ namespace TestNamespace
     public async Task AssertMultiple_FixAllConvertsInOnePass()
     {
         await new CodeFixTest(
-                WrapInTestMethod(@"var contestant = 1337;
+                TestSource.InTestMethod(@"var contestant = 1337;
             var name = ""Joel"";
             [|Assert.That(contestant, Is.GreaterThan(1000))|];
             [|Assert.Multiple(() =>
@@ -1434,7 +1423,7 @@ namespace TestNamespace
             })|];
             [|Assert.Multiple(() => [|Assert.AreEqual(1337, contestant)|])|];
             [|Assert.IsTrue(contestant > 1000)|];"),
-                WrapInTestMethod(@"var contestant = 1337;
+                TestSource.InTestMethod(@"var contestant = 1337;
             var name = ""Joel"";
             contestant.ShouldBeGreaterThan(1000);
             this.ShouldSatisfyAllConditions(
@@ -1458,12 +1447,7 @@ namespace TestNamespace
     [TestCase("Assert.Warn(\"slow\");")]
     public async Task RunnerControl_IsNotFlagged(string statement)
     {
-        await new CSharpAnalyzerTest<NUnitToShouldlyAnalyzer, NUnitVerifier>
-            {
-                TestCode = WrapInTestMethod(statement),
-                ReferenceAssemblies = CodeFixTest.References
-            }
-            .RunAsync(CancellationToken.None);
+        await new AnalyzerOnlyTest(TestSource.InTestMethod(statement)).RunAsync(CancellationToken.None);
     }
 
     private static IEnumerable<TestCaseData> UnconvertibleAssertMultipleTestCases()
@@ -1510,36 +1494,8 @@ namespace TestNamespace
     [TestCaseSource(nameof(UnconvertibleAssertMultipleTestCases))]
     public async Task TestUnconvertibleAssertMultipleIsNotReported(string signature, string body)
     {
-        var test = new CSharpAnalyzerTest<NUnitToShouldlyAnalyzer, NUnitVerifier>
-        {
-            TestCode = WrapInTestMethod(body, signature),
-            ReferenceAssemblies = TestReferenceAssemblies
-        };
-
-        await test.RunAsync(CancellationToken.None);
+        await new AnalyzerOnlyTest(TestSource.InTestMethod(body, signature)).RunAsync(CancellationToken.None);
     }
-
-    private static string WrapInTestMethod(string body, string signature = "public void TestMethod()") => $@"
-using NUnit.Framework;using System.Collections.Generic;using System;using System.Threading.Tasks;
-using Shouldly;
-namespace TestNamespace
-{{
-    public class TestClass
-    {{
-        [Test]
-        {signature}
-        {{
-            {body}
-        }}
-    }}
-}}";
-
-    private static readonly ReferenceAssemblies TestReferenceAssemblies = ReferenceAssemblies.Default
-        .AddPackages(ImmutableArray.Create(
-                new PackageIdentity("Shouldly", "4.2.1"),
-                new PackageIdentity("NUnit", "3.14.0")
-            )
-        );
 
     [Test]
     public async Task AwaitReceiver_IsParenthesised()
@@ -1659,7 +1615,7 @@ namespace TestNamespace
     public async Task TestNullableReceiverConversion(string before, string after)
     {
         // Warnings are compared too, so a fix that leaves CS8604 behind fails.
-        var codeFixTest = new CodeFixTest(WrapInNullableTestMethod(before), WrapInNullableTestMethod(after))
+        var codeFixTest = new CodeFixTest(TestSource.InNullableReportTest(before), TestSource.InNullableReportTest(after))
         {
             CompilerDiagnostics = CompilerDiagnostics.Warnings
         };
@@ -1672,36 +1628,10 @@ namespace TestNamespace
     public async Task DoesNotContainOnNullableString_DoesNotChainShouldNotBeNull()
     {
         await new CodeFixTest(
-                WrapInNullableTestMethod(@"[|Assert.That(report.Error, Does.Not.Contain(""route""))|];"),
-                WrapInNullableTestMethod(@"report.Error.ShouldNotContain(""route"", Case.Sensitive);"))
+                TestSource.InNullableReportTest(@"[|Assert.That(report.Error, Does.Not.Contain(""route""))|];"),
+                TestSource.InNullableReportTest(@"report.Error.ShouldNotContain(""route"", Case.Sensitive);"))
             .RunAsync(CancellationToken.None);
     }
-
-    private static string WrapInNullableTestMethod(string body) => $@"#nullable enable
-#pragma warning disable CS1591
-using NUnit.Framework;using System.Collections.Generic;
-using Shouldly;
-namespace TestNamespace
-{{
-    public class Report
-    {{
-        public string? Error {{ get; set; }}
-        public string Name {{ get; set; }} = """";
-        public List<string> Tags {{ get; }} = new List<string>();
-    }}
-
-    public class TestClass
-    {{
-        [Test]
-        public void TestMethod()
-        {{
-            var report = new Report {{ Error = GetError() }};
-            {body}
-        }}
-
-        private static string? GetError() => ""no route to host"";
-    }}
-}}";
 
     // Forms that were reported but never converted (#34), each from a real suite.
     private static IEnumerable<TestCaseData> PreviouslyUnconvertedFormTestCases()
@@ -1917,7 +1847,7 @@ namespace TestNamespace
     public async Task TestPreviouslyUnconvertedFormConversion(string before, string after)
     {
         // Warnings are compared too, so a conversion that leaves e.g. CS8629 or CS0162 behind fails.
-        var codeFixTest = new CodeFixTest(WrapInSampleTestMethod(before), WrapInSampleTestMethod(after))
+        var codeFixTest = new CodeFixTest(TestSource.InSampleTest(before), TestSource.InSampleTest(after))
         {
             CompilerDiagnostics = CompilerDiagnostics.Warnings
         };
@@ -1930,14 +1860,14 @@ namespace TestNamespace
     {
         const string signature = "private async Task<IReadOnlyList<string>> SnapshotAsync()";
         await new CodeFixTest(
-                WrapInSampleTestMethod(@"for (var tries = 0; tries < 3; tries++)
+                TestSource.InSampleTest(@"for (var tries = 0; tries < 3; tries++)
             {
                 await Task.Delay(1);
             }
 
             [|Assert.Fail(""no snapshot"")|];
             return new List<string>();", signature),
-                WrapInSampleTestMethod(@"for (var tries = 0; tries < 3; tries++)
+                TestSource.InSampleTest(@"for (var tries = 0; tries < 3; tries++)
             {
                 await Task.Delay(1);
             }
@@ -1954,7 +1884,7 @@ namespace TestNamespace
     [Test]
     public async Task DoesNotContainKeyOnIReadOnlyDictionary_IsLeftAlone()
     {
-        var source = WrapInSampleTestMethod(@"[|Assert.That(sample.Failures, Does.Not.ContainKey(""sonarr""))|];");
+        var source = TestSource.InSampleTest(@"[|Assert.That(sample.Failures, Does.Not.ContainKey(""sonarr""))|];");
         // The fix is still offered (as for every reported assert) but leaves the document unchanged.
         await new CodeFixTest(source, source)
             {
@@ -1971,7 +1901,7 @@ namespace TestNamespace
     [TestCase("Has.None.EndsWith")]
     public async Task StringQuantifierOnNullableStrings_IsLeftAlone(string constraint)
     {
-        var source = WrapInSampleTestMethod(@"var uris = new List<string?> { ""https://a"" };
+        var source = TestSource.InSampleTest(@"var uris = new List<string?> { ""https://a"" };
             [|Assert.That(uris, " + constraint + @"(""https://""))|];");
         await new CodeFixTest(source, source)
             {
@@ -2054,7 +1984,7 @@ public class TestClass
     public async Task TestAsyncAssertMultipleConversion(string before, string after)
     {
         const string signature = "public async Task TestMethod()";
-        var codeFixTest = new CodeFixTest(WrapInSampleTestMethod(before, signature), WrapInSampleTestMethod(after, signature));
+        var codeFixTest = new CodeFixTest(TestSource.InSampleTest(before, signature), TestSource.InSampleTest(after, signature));
         await codeFixTest.RunAsync(CancellationToken.None);
     }
 
@@ -2081,80 +2011,6 @@ public class TestClass
     [TestCaseSource(nameof(UnconvertibleAsyncAssertMultipleTestCases))]
     public async Task TestUnconvertibleAsyncAssertMultipleIsNotReported(string signature, string body)
     {
-        var test = new CSharpAnalyzerTest<NUnitToShouldlyAnalyzer, NUnitVerifier>
-        {
-            TestCode = WrapInSampleTestMethod(body, signature),
-            ReferenceAssemblies = TestReferenceAssemblies
-        };
-
-        await test.RunAsync(CancellationToken.None);
-    }
-
-    private static string WrapInSampleTestMethod(string body, string signature = "public void TestMethod()") => $@"#nullable enable
-#pragma warning disable CS1591
-using NUnit.Framework;using System;using System.Collections.Generic;using System.Linq;using System.Threading.Tasks;
-using Shouldly;
-namespace TestNamespace
-{{
-    public class Sample
-    {{
-        public double Ratio {{ get; set; }} = 0.8;
-        public TimeSpan? Median {{ get; set; }} = TimeSpan.FromHours(1);
-        public DateTimeOffset From {{ get; set; }}
-        public DateTimeOffset To {{ get; set; }}
-        public string Body {{ get; set; }} = """";
-        public List<string> Lines {{ get; }} = new List<string>();
-        public List<int> Numbers {{ get; }} = new List<int>();
-        public Dictionary<string, string> Errors {{ get; }} = new Dictionary<string, string>();
-        public IReadOnlyDictionary<string, string> Failures => Errors;
-        public Task<byte[]> ReadAsByteArrayAsync() => Task.FromResult(new byte[] {{ 1 }});
-    }}
-
-    public class TestClass
-    {{
-        private readonly Sample sample = new Sample();
-
-        [Test]
-        {signature}
-        {{
-            {body}
-        }}
-
-        private static Task<string> GetStatusAsync() => Task.FromResult(""Ordered"");
-        private static Task RefuseAsync() => Task.FromException(new InvalidOperationException());
-    }}
-}}";
-
-    private class
-        CodeFixTest :CSharpCodeFixTest<NUnitToShouldlyAnalyzer, NUnitToShouldlyCodeFixProvider, NUnitVerifier>
-    {
-        public CodeFixTest(
-            string source,
-            string fixedSource,
-            params DiagnosticResult[] expected)
-        {
-            TestCode = source;
-            FixedCode = fixedSource;
-            ExpectedDiagnostics.AddRange(expected);
-
-            ReferenceAssemblies = References;
-        }
-
-        public static readonly ReferenceAssemblies References = ReferenceAssemblies.Default
-            .AddPackages(ImmutableArray.Create(
-                    new PackageIdentity("Shouldly", "4.2.1"),
-                    new PackageIdentity("NUnit", "3.14.0")
-                )
-            );
-    }
-
-    public class TestCase
-    {
-        public string NUnitAssertion { get; set; }
-        public string ShouldlyAssertion { get; set; }
-        public int Line { get; set; }
-        public int StartColumn { get; set; }
-        public int EndColumn { get; set; }
-        public string SetupCode { get; set; }
+        await new AnalyzerOnlyTest(TestSource.InSampleTest(body, signature)).RunAsync(CancellationToken.None);
     }
 }
