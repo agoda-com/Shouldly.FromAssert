@@ -448,9 +448,46 @@ namespace Shouldly.FromAssert
                     return AnyOrAllStrings(actual, "ShouldNotContain", segments[segments.Count - 1].Name, expected, item, semanticModel, position);
                 case "Is.EqualTo().Within()":
                     return EqualWithin(actual, segments[1].Arguments, expected, semanticModel, position);
+                case "Is.TypeOf()":
+                    return TypeAssertion(actual, "ShouldBeOfType", invocation.ArgumentList.Arguments[1].Expression);
+                case "Is.Not.TypeOf()":
+                    return TypeAssertion(actual, "ShouldNotBeOfType", invocation.ArgumentList.Arguments[1].Expression);
+                case "Is.InstanceOf()":
+                    return TypeAssertion(actual, "ShouldBeAssignableTo", invocation.ArgumentList.Arguments[1].Expression);
+                case "Is.Not.InstanceOf()":
+                    return TypeAssertion(actual, "ShouldNotBeAssignableTo", invocation.ArgumentList.Arguments[1].Expression);
                 default:
                     return null;
             }
+        }
+
+        // Is.TypeOf<T>() and Is.TypeOf(typeof(T)) both become actual.ShouldBeOfType<T>(); likewise for the other type
+        // constraints. A Type that isn't a typeof expression (e.g. a variable) is left for a hand conversion.
+        private static ExpressionSyntax TypeAssertion(ExpressionSyntax actual, string method, ExpressionSyntax constraint)
+        {
+            if (!(Unparenthesize(constraint) is InvocationExpressionSyntax typeConstraint) ||
+                !(typeConstraint.Expression is MemberAccessExpressionSyntax memberAccess))
+                return null;
+
+            TypeSyntax type;
+            if (memberAccess.Name is GenericNameSyntax genericName &&
+                genericName.TypeArgumentList.Arguments.Count == 1 &&
+                typeConstraint.ArgumentList.Arguments.Count == 0)
+                type = genericName.TypeArgumentList.Arguments[0];
+            else if (memberAccess.Name is IdentifierNameSyntax &&
+                     typeConstraint.ArgumentList.Arguments.Count == 1 &&
+                     typeConstraint.ArgumentList.Arguments[0].Expression is TypeOfExpressionSyntax typeOf)
+                type = typeOf.Type;
+            else
+                return null;
+
+            return SyntaxFactory.InvocationExpression(
+                SyntaxFactory.MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    actual,
+                    SyntaxFactory.GenericName(SyntaxFactory.Identifier(method))
+                        .WithTypeArgumentList(SyntaxFactory.TypeArgumentList(SyntaxFactory.SingletonSeparatedList(type)))),
+                SyntaxFactory.ArgumentList());
         }
 
         // Is.EqualTo(x).Within(tolerance) maps onto Shouldly's tolerance overloads (double, float, decimal, TimeSpan,

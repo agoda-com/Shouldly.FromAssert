@@ -122,7 +122,7 @@ public class AssertMultipleTests
         await codeFixTest.RunAsync(CancellationToken.None);
     }
 
-    // From #34: forms that were reported but never converted, each from a real suite.
+    // From #34 (forms that were reported but never converted, each from a real suite) and #42.
     private static IEnumerable<TestCaseData> SampleCases()
     {
         yield return new TestCaseData(
@@ -150,6 +150,19 @@ public class AssertMultipleTests
                 () => lines.ShouldContain(item => item.Contains(""/api/stats"")),
                 () => lines.ShouldNotContain(item => item.Contains(""key-for-tests"")));"
         ).SetName("Has.Some and Has.None Contains inside Assert.Multiple");
+
+        yield return new TestCaseData(
+            @"object name = ""Joel"";
+            [|Assert.Multiple(() =>
+            {
+                [|Assert.That(name, Is.TypeOf<string>())|];
+                [|Assert.That(name, Is.Not.InstanceOf<int>())|];
+            })|];",
+            @"object name = ""Joel"";
+            this.ShouldSatisfyAllConditions(
+                () => { name.ShouldBeOfType<string>(); },
+                () => name.ShouldNotBeAssignableTo<int>());"
+        ).SetName("Is.TypeOf<T> inside Assert.Multiple");
     }
 
     [Test]
