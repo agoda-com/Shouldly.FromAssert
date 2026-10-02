@@ -423,24 +423,29 @@ namespace Shouldly.FromAssert
                 case "Has.All.Contain()":
                 case "Is.All.Contains()":
                 case "Has.All.Contains()":
-                    return AllStrings(actual, expected, semanticModel, position)
-                        ? Should(actual, "ShouldAllBe", ItemLambda(item, Should(item, "Contains", expected)))
-                        : null;
-                // string.StartsWith(string) alone is culture-sensitive (CA1310), so the comparison is spelled out.
                 case "Is.All.StartsWith()":
                 case "Has.All.StartsWith()":
                 case "Is.All.StartWith()":
                 case "Has.All.StartWith()":
-                    return AllStrings(actual, expected, semanticModel, position)
-                        ? Should(actual, "ShouldAllBe", ItemLambda(item, Should(item, "StartsWith", expected, OrdinalComparison(semanticModel, position))))
-                        : null;
                 case "Is.All.EndsWith()":
                 case "Has.All.EndsWith()":
                 case "Is.All.EndWith()":
                 case "Has.All.EndWith()":
-                    return AllStrings(actual, expected, semanticModel, position)
-                        ? Should(actual, "ShouldAllBe", ItemLambda(item, Should(item, "EndsWith", expected, OrdinalComparison(semanticModel, position))))
-                        : null;
+                    return AnyOrAllStrings(actual, "ShouldAllBe", segments[segments.Count - 1].Name, expected, item, semanticModel, position);
+                case "Has.Some.Contain()":
+                case "Has.Some.Contains()":
+                case "Has.Some.StartsWith()":
+                case "Has.Some.StartWith()":
+                case "Has.Some.EndsWith()":
+                case "Has.Some.EndWith()":
+                    return AnyOrAllStrings(actual, "ShouldContain", segments[segments.Count - 1].Name, expected, item, semanticModel, position);
+                case "Has.None.Contain()":
+                case "Has.None.Contains()":
+                case "Has.None.StartsWith()":
+                case "Has.None.StartWith()":
+                case "Has.None.EndsWith()":
+                case "Has.None.EndWith()":
+                    return AnyOrAllStrings(actual, "ShouldNotContain", segments[segments.Count - 1].Name, expected, item, semanticModel, position);
                 case "Is.EqualTo().Within()":
                     return EqualWithin(actual, segments[1].Arguments, expected, semanticModel, position);
                 default:
@@ -529,6 +534,39 @@ namespace Shouldly.FromAssert
             IsStringSequence(actual, semanticModel, position) &&
             IsExpressionTreeSafe(expected) &&
             IsString(expected, semanticModel, position);
+
+        // Has.Some/Has.None/Has.All/Is.All over a string sequence with a substring constraint, e.g.
+        // Has.None.Contains(x) -> actual.ShouldNotContain(item => item.Contains(x)). string.Contains(string) is already
+        // ordinal, but string.StartsWith(string) alone is culture-sensitive (CA1310), so the comparison is spelled out.
+        private static ExpressionSyntax AnyOrAllStrings(
+            ExpressionSyntax actual,
+            string method,
+            string constraint,
+            ExpressionSyntax expected,
+            IdentifierNameSyntax item,
+            SemanticModel semanticModel,
+            int position)
+        {
+            if (!AllStrings(actual, expected, semanticModel, position)) return null;
+
+            ExpressionSyntax body;
+            switch (constraint)
+            {
+                case "Contain":
+                case "Contains":
+                    body = Should(item, "Contains", expected);
+                    break;
+                case "StartWith":
+                case "StartsWith":
+                    body = Should(item, "StartsWith", expected, OrdinalComparison(semanticModel, position));
+                    break;
+                default:
+                    body = Should(item, "EndsWith", expected, OrdinalComparison(semanticModel, position));
+                    break;
+            }
+
+            return Should(actual, method, ItemLambda(item, body));
+        }
 
         // `StringComparison.Ordinal`, qualified when the file doesn't import System.
         private static ExpressionSyntax OrdinalComparison(SemanticModel semanticModel, int position)
