@@ -44,6 +44,41 @@ public class CollectionConstraintTests
             "contestants.ShouldNotBeEmpty();"
         ).SetName("Assert.That with Is.Not.Empty");
 
+        // Not.Null.And.Not.Empty must keep both halves (#29): one ShouldNotBeNullOrEmpty on a string (Shouldly has no
+        // sequence overload), two asserts otherwise.
+        yield return new TestCaseData(
+            "var greeting = \"Hello\";",
+            "[|Assert.That(greeting, Is.Not.Null.And.Not.Empty)|];",
+            "greeting.ShouldNotBeNullOrEmpty();"
+        ).SetName("Assert.That with Is.Not.Null.And.Not.Empty on a string");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1337 };",
+            "[|Assert.That(contestants, Is.Not.Null.And.Not.Empty)|];",
+            @"contestants.ShouldNotBeNull();
+            contestants.ShouldNotBeEmpty();"
+        ).SetName("Assert.That with Is.Not.Null.And.Not.Empty on a collection");
+
+        yield return new TestCaseData(
+            "var greeting = \"Hello\";",
+            "[|Assert.That(greeting, Is.Not.Null.And.Not.Empty, \"greets\")|];",
+            "greeting.ShouldNotBeNullOrEmpty(\"greets\");"
+        ).SetName("Assert.That with Is.Not.Null.And.Not.Empty and a message");
+
+        yield return new TestCaseData(
+            "var greeting = \"Hello\";",
+            "[|Assert.That(greeting, Is.Not.Empty.And.Not.Null)|];",
+            "greeting.ShouldNotBeNullOrEmpty();"
+        ).SetName("Assert.That with Is.Not.Empty.And.Not.Null");
+
+        yield return new TestCaseData(
+            "var contestants = new List<int> { 1337 };",
+            "[|Assert.That(contestants, Is.Not.Null.And.Not.Empty.And.Unique)|];",
+            @"contestants.ShouldNotBeNull();
+            contestants.ShouldNotBeEmpty();
+            contestants.ShouldBeUnique();"
+        ).SetName("Assert.That with Is.Not.Null.And.Not.Empty followed by another link");
+
         yield return new TestCaseData(
             "var contestants = new List<int> { 1, 3, 3, 7 };",
             "[|Assert.That(contestants, Does.Not.Contain(42))|];",

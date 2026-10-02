@@ -145,9 +145,24 @@ namespace Shouldly.FromAssert
             var links = SplitAndChain(constraint);
             if (links == null) return null;
 
+            // Shouldly's ShouldNotBeNullOrEmpty only takes a string, so on anything else the two halves stay separate asserts.
+            var notNullOrEmpty = IsString(actual.Expression, semanticModel, position) &&
+                                 links.Any(link => ConstraintShape(link) == "Is.Not.Null") &&
+                                 links.Any(link => ConstraintShape(link) == "Is.Not.Empty");
+
             var statements = new List<StatementSyntax>();
             foreach (var link in links)
             {
+                if (notNullOrEmpty && (ConstraintShape(link) == "Is.Not.Null" || ConstraintShape(link) == "Is.Not.Empty"))
+                {
+                    if (statements.Any(IsShouldNotBeNullOrEmpty)) continue;
+
+                    var call = Should(ParenthesiseIfNeeded(actual.Expression.WithoutTrivia()), "ShouldNotBeNullOrEmpty");
+                    if (message != null) call = AppendMessage(call, message, semanticModel, position);
+                    statements.Add(SyntaxFactory.ExpressionStatement(call));
+                    continue;
+                }
+
                 var single = invocation.WithArgumentList(
                     SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(new[] { actual, SyntaxFactory.Argument(link) })));
                 var converted = ConvertLink(single, message, semanticModel, position);
@@ -157,6 +172,12 @@ namespace Shouldly.FromAssert
 
             return statements;
         }
+
+        private static bool IsShouldNotBeNullOrEmpty(StatementSyntax statement) =>
+            statement is ExpressionStatementSyntax expressionStatement &&
+            expressionStatement.Expression is InvocationExpressionSyntax invocation &&
+            invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+            memberAccess.Name.Identifier.Text == "ShouldNotBeNullOrEmpty";
 
         private StatementSyntax ConvertLink(
             InvocationExpressionSyntax invocation,
@@ -183,6 +204,17 @@ namespace Shouldly.FromAssert
             SemanticModel semanticModel,
             int position)
         {
+            // The sequence ShouldBe puts `bool ignoreOrder` before the message, so a positional message binds to the
+            // object overload or to nothing at all (#31).
+            if (IsSequenceShouldBe(call, semanticModel, position))
+            {
+                var sequence = call.AddArgumentListArguments(
+                    SyntaxFactory.Argument(Literal(SyntaxKind.FalseLiteralExpression))
+                        .WithNameColon(SyntaxFactory.NameColon("ignoreOrder")),
+                    SyntaxFactory.Argument(message).WithNameColon(SyntaxFactory.NameColon("customMessage")));
+                if (Binds(sequence, semanticModel, position)) return sequence;
+            }
+
             var positional = call.AddArgumentListArguments(SyntaxFactory.Argument(message));
             if (Binds(positional, semanticModel, position)) return positional;
 
@@ -190,6 +222,12 @@ namespace Shouldly.FromAssert
                 SyntaxFactory.Argument(message).WithNameColon(SyntaxFactory.NameColon("customMessage")));
             return Binds(named, semanticModel, position) ? named : positional;
         }
+
+        private static bool IsSequenceShouldBe(InvocationExpressionSyntax call, SemanticModel semanticModel, int position) =>
+            call.Expression is MemberAccessExpressionSyntax memberAccess &&
+            memberAccess.Name.Identifier.Text == "ShouldBe" &&
+            call.ArgumentList.Arguments.Count == 1 &&
+            ElementType(TypeOf(memberAccess.Expression, semanticModel, position)) != null;
 
         private static bool Binds(ExpressionSyntax expression, SemanticModel semanticModel, int position) =>
             semanticModel.GetSpeculativeSymbolInfo(position, expression, SpeculativeBindingOption.BindAsExpression)
@@ -323,7 +361,7 @@ namespace Shouldly.FromAssert
             var segments = FlattenConstraint(Unparenthesize(invocation.ArgumentList.Arguments[1].Expression));
             if (segments == null) return null;
 
-            var shape = string.Join(".", segments.Select(s => s.Arguments == null ? s.Name : s.Name + "()"));
+            var shape = Shape(segments);
             var constraintArguments = segments[segments.Count - 1].Arguments?.Arguments
                                       ?? default(SeparatedSyntaxList<ArgumentSyntax>);
             var expected = constraintArguments.Count > 0 ? constraintArguments[0].Expression : null;
@@ -624,21 +662,35 @@ namespace Shouldly.FromAssert
         // A sequence of non-nullable strings, so `item.Contains(x)` is a substring match on each, as NUnit's is.
         private static bool IsStringSequence(ExpressionSyntax expression, SemanticModel semanticModel, int position)
         {
-            var type = TypeOf(expression, semanticModel, position);
-            if (type == null || type.SpecialType == SpecialType.System_String) return false;
+            var element = ElementType(TypeOf(expression, semanticModel, position));
+            return element?.SpecialType == SpecialType.System_String &&
+                   element.NullableAnnotation != NullableAnnotation.Annotated;
+        }
+
+        // T for an IEnumerable<T> other than string; null otherwise.
+        private static ITypeSymbol ElementType(ITypeSymbol type)
+        {
+            if (type == null || type.SpecialType == SpecialType.System_String) return null;
 
             var sequence = type.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T
                 ? (INamedTypeSymbol) type
                 : type.AllInterfaces.FirstOrDefault(i =>
                     i.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T);
-            var element = sequence?.TypeArguments[0];
-
-            return element?.SpecialType == SpecialType.System_String &&
-                   element.NullableAnnotation != NullableAnnotation.Annotated;
+            return sequence?.TypeArguments[0];
         }
 
         private static bool IsNullableValueType(ExpressionSyntax expression, SemanticModel semanticModel, int position) =>
             TypeOf(expression, semanticModel, position)?.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
+
+        // `Has.All.Matches<int>(p)` is "Has.All.Matches()".
+        private static string Shape(List<(string Name, ArgumentListSyntax Arguments)> segments) =>
+            string.Join(".", segments.Select(s => s.Arguments == null ? s.Name : s.Name + "()"));
+
+        private static string ConstraintShape(ExpressionSyntax constraint)
+        {
+            var segments = FlattenConstraint(Unparenthesize(constraint));
+            return segments == null ? null : Shape(segments);
+        }
 
         // `Has.All.Matches<int>(p)` becomes [("Has", null), ("All", null), ("Matches", (p))].
         private static List<(string Name, ArgumentListSyntax Arguments)> FlattenConstraint(ExpressionSyntax constraint)
