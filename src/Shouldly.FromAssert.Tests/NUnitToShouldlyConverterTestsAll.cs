@@ -1841,6 +1841,75 @@ namespace TestNamespace
                 () => uris.ShouldAllBe(item => item.StartsWith(""https://"", StringComparison.Ordinal)),
                 () => uris.Count.ShouldBe(1));"
         ).SetName("Is.All.StartsWith inside Assert.Multiple");
+
+        yield return new TestCaseData(
+            @"object name = ""Joel"";
+            [|Assert.That(name, Is.TypeOf<string>())|];",
+            @"object name = ""Joel"";
+            name.ShouldBeOfType<string>();"
+        ).SetName("Is.TypeOf<T>");
+
+        yield return new TestCaseData(
+            @"object name = ""Joel"";
+            [|Assert.That(name, Is.TypeOf(typeof(string)))|];",
+            @"object name = ""Joel"";
+            name.ShouldBeOfType<string>();"
+        ).SetName("Is.TypeOf(typeof(T))");
+
+        yield return new TestCaseData(
+            @"object name = ""Joel"";
+            [|Assert.That(name, Is.Not.TypeOf<int>())|];",
+            @"object name = ""Joel"";
+            name.ShouldNotBeOfType<int>();"
+        ).SetName("Is.Not.TypeOf<T>");
+
+        yield return new TestCaseData(
+            @"object name = ""Joel"";
+            [|Assert.That(name, Is.Not.TypeOf(typeof(int)))|];",
+            @"object name = ""Joel"";
+            name.ShouldNotBeOfType<int>();"
+        ).SetName("Is.Not.TypeOf(typeof(T))");
+
+        yield return new TestCaseData(
+            @"object names = new List<string>();
+            [|Assert.That(names, Is.InstanceOf<IEnumerable<string>>())|];",
+            @"object names = new List<string>();
+            names.ShouldBeAssignableTo<IEnumerable<string>>();"
+        ).SetName("Is.InstanceOf<T>");
+
+        yield return new TestCaseData(
+            @"object names = new List<string>();
+            [|Assert.That(names, Is.InstanceOf(typeof(IEnumerable<string>)))|];",
+            @"object names = new List<string>();
+            names.ShouldBeAssignableTo<IEnumerable<string>>();"
+        ).SetName("Is.InstanceOf(typeof(T))");
+
+        yield return new TestCaseData(
+            @"object name = ""Joel"";
+            [|Assert.That(name, Is.Not.InstanceOf<IEnumerable<int>>())|];",
+            @"object name = ""Joel"";
+            name.ShouldNotBeAssignableTo<IEnumerable<int>>();"
+        ).SetName("Is.Not.InstanceOf<T>");
+
+        yield return new TestCaseData(
+            @"object name = ""Joel"";
+            [|Assert.That(name, Is.TypeOf<string>(), ""name should be a string"")|];",
+            @"object name = ""Joel"";
+            name.ShouldBeOfType<string>(""name should be a string"");"
+        ).SetName("Is.TypeOf<T> with a message");
+
+        yield return new TestCaseData(
+            @"object name = ""Joel"";
+            [|Assert.Multiple(() =>
+            {
+                [|Assert.That(name, Is.TypeOf<string>())|];
+                [|Assert.That(name, Is.Not.InstanceOf<int>())|];
+            })|];",
+            @"object name = ""Joel"";
+            this.ShouldSatisfyAllConditions(
+                () => { name.ShouldBeOfType<string>(); },
+                () => name.ShouldNotBeAssignableTo<int>());"
+        ).SetName("Is.TypeOf<T> inside Assert.Multiple");
     }
 
     [Test]
@@ -1887,6 +1956,21 @@ namespace TestNamespace
     {
         var source = WrapInSampleTestMethod(@"[|Assert.That(sample.Failures, Does.Not.ContainKey(""sonarr""))|];");
         // The fix is still offered (as for every reported assert) but leaves the document unchanged.
+        await new CodeFixTest(source, source)
+            {
+                NumberOfIncrementalIterations = 1,
+                NumberOfFixAllIterations = 1
+            }
+            .RunAsync(CancellationToken.None);
+    }
+
+    // Shouldly's type assertions only take a type argument, so a Type held in a variable is left for a hand conversion.
+    [Test]
+    public async Task IsTypeOfWithATypeVariable_IsLeftAlone()
+    {
+        var source = WrapInSampleTestMethod(@"object name = ""Joel"";
+            var expected = typeof(string);
+            [|Assert.That(name, Is.TypeOf(expected))|];");
         await new CodeFixTest(source, source)
             {
                 NumberOfIncrementalIterations = 1,
