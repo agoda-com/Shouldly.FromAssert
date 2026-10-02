@@ -1910,6 +1910,75 @@ namespace TestNamespace
                 () => { name.ShouldBeOfType<string>(); },
                 () => name.ShouldNotBeAssignableTo<int>());"
         ).SetName("Is.TypeOf<T> inside Assert.Multiple");
+
+        yield return new TestCaseData(
+            @"var lines = new[] { ""host: NAS media share 94% full"" };
+            [|Assert.That(lines.Select(line => line.Trim()), Has.Some.Contains(""94% full""))|];",
+            @"var lines = new[] { ""host: NAS media share 94% full"" };
+            lines.Select(line => line.Trim()).ShouldContain(item => item.Contains(""94% full""));"
+        ).SetName("Has.Some.Contains");
+
+        yield return new TestCaseData(
+            @"var urls = new List<string> { ""https://dash.dicko.dev"" };
+            [|Assert.That(urls, Has.None.Contains(""n8n""))|];",
+            @"var urls = new List<string> { ""https://dash.dicko.dev"" };
+            urls.ShouldNotContain(item => item.Contains(""n8n""));"
+        ).SetName("Has.None.Contains");
+
+        yield return new TestCaseData(
+            @"var paths = new List<string> { ""/repos/x/pulls?state=open"" };
+            [|Assert.That(paths, Has.Some.StartsWith(""/repos/x/pulls?""))|];",
+            @"var paths = new List<string> { ""/repos/x/pulls?state=open"" };
+            paths.ShouldContain(item => item.StartsWith(""/repos/x/pulls?"", StringComparison.Ordinal));"
+        ).SetName("Has.Some.StartsWith");
+
+        yield return new TestCaseData(
+            @"var paths = new List<string> { ""/api/v3/series/358"" };
+            [|Assert.That(paths, Has.Some.EndsWith(""/series/358""))|];",
+            @"var paths = new List<string> { ""/api/v3/series/358"" };
+            paths.ShouldContain(item => item.EndsWith(""/series/358"", StringComparison.Ordinal));"
+        ).SetName("Has.Some.EndsWith");
+
+        yield return new TestCaseData(
+            @"var paths = new List<string> { ""/api/v3/series/358"" };
+            [|Assert.That(paths, Has.None.StartWith(""/api/v1/""))|];",
+            @"var paths = new List<string> { ""/api/v3/series/358"" };
+            paths.ShouldNotContain(item => item.StartsWith(""/api/v1/"", StringComparison.Ordinal));"
+        ).SetName("Has.None.StartWith");
+
+        yield return new TestCaseData(
+            @"var paths = new List<string> { ""/api/v3/series/358"" };
+            [|Assert.That(paths, Has.None.EndsWith("".json""))|];",
+            @"var paths = new List<string> { ""/api/v3/series/358"" };
+            paths.ShouldNotContain(item => item.EndsWith("".json"", StringComparison.Ordinal));"
+        ).SetName("Has.None.EndsWith");
+
+        yield return new TestCaseData(
+            @"var urls = new List<string> { ""https://a.dicko.dev:443"" };
+            [|Assert.That(urls, Has.All.Contains("".dicko.dev:""))|];",
+            @"var urls = new List<string> { ""https://a.dicko.dev:443"" };
+            urls.ShouldAllBe(item => item.Contains("".dicko.dev:""));"
+        ).SetName("Has.All.Contains");
+
+        yield return new TestCaseData(
+            @"var lines = new List<string> { ""GET http://books.test:8080/api/stats"" };
+            [|Assert.That(lines, Has.Some.Contains(""/api/stats""), ""the request is logged"")|];",
+            @"var lines = new List<string> { ""GET http://books.test:8080/api/stats"" };
+            lines.ShouldContain(item => item.Contains(""/api/stats""), ""the request is logged"");"
+        ).SetName("Has.Some.Contains with a message");
+
+        yield return new TestCaseData(
+            @"var lines = new List<string> { ""GET http://books.test:8080/api/stats"" };
+            [|Assert.Multiple(() =>
+            {
+                [|Assert.That(lines, Has.Some.Contains(""/api/stats""))|];
+                [|Assert.That(lines, Has.None.Contains(""key-for-tests""))|];
+            })|];",
+            @"var lines = new List<string> { ""GET http://books.test:8080/api/stats"" };
+            this.ShouldSatisfyAllConditions(
+                () => lines.ShouldContain(item => item.Contains(""/api/stats"")),
+                () => lines.ShouldNotContain(item => item.Contains(""key-for-tests"")));"
+        ).SetName("Has.Some and Has.None Contains inside Assert.Multiple");
     }
 
     [Test]
@@ -1979,13 +2048,15 @@ namespace TestNamespace
             .RunAsync(CancellationToken.None);
     }
 
-    // `item.StartsWith(...)` on a maybe-null element would raise CS8602, and NUnit fails a null element anyway,
+    // `item.StartsWith(...)` on a maybe-null element would raise CS8602 (and throw where NUnit just doesn't match),
     // so a sequence of string? is left for a hand conversion.
-    [Test]
-    public async Task IsAllStartsWithOnNullableStrings_IsLeftAlone()
+    [TestCase("Is.All.StartsWith")]
+    [TestCase("Has.Some.Contains")]
+    [TestCase("Has.None.EndsWith")]
+    public async Task StringQuantifierOnNullableStrings_IsLeftAlone(string constraint)
     {
         var source = WrapInSampleTestMethod(@"var uris = new List<string?> { ""https://a"" };
-            [|Assert.That(uris, Is.All.StartsWith(""https://""))|];");
+            [|Assert.That(uris, " + constraint + @"(""https://""))|];");
         await new CodeFixTest(source, source)
             {
                 NumberOfIncrementalIterations = 1,
