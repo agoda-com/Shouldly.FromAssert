@@ -107,6 +107,21 @@ public class AssertMultipleTests
                 () => { name.ShouldBeOfType<string>(); },
                 () => name.ShouldNotBeNull());"
         ).SetName("Assert.Multiple gives a first ShouldBeOfType<string> a block body");
+
+        yield return new TestCaseData(
+            @"var name = ""Joel"";
+            var contestants = new List<int> { 1, 3, 3, 7 };
+            [|Assert.Multiple(() =>
+            {
+                [|Assert.That(contestants, Is.EqualTo(new[] { 1, 3, 3, 7 }), ""in order"")|];
+                [|Assert.That(name, Is.Not.Null.And.Not.Empty)|];
+            })|];",
+            @"var name = ""Joel"";
+            var contestants = new List<int> { 1, 3, 3, 7 };
+            this.ShouldSatisfyAllConditions(
+                () => contestants.ShouldBe(new[] { 1, 3, 3, 7 }, ignoreOrder: false, customMessage: ""in order""),
+                () => name.ShouldNotBeNullOrEmpty());"
+        ).SetName("Assert.Multiple with a sequence message and Is.Not.Null.And.Not.Empty");
     }
 
     [Test]

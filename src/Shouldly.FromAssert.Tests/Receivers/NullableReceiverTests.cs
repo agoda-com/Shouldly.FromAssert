@@ -15,6 +15,11 @@ public class NullableReceiverTests
         ).SetName("Does.Contain on a string? property chains ShouldNotBeNull");
 
         yield return new TestCaseData(
+            @"[|Assert.That(report.Error, Is.Not.Null.And.Not.Empty)|];",
+            @"report.Error.ShouldNotBeNullOrEmpty();"
+        ).SetName("Is.Not.Null.And.Not.Empty on a string? becomes ShouldNotBeNullOrEmpty");
+
+        yield return new TestCaseData(
             @"var error = GetError();
             [|Assert.That(error, Does.StartWith(""no""))|];",
             @"var error = GetError();
