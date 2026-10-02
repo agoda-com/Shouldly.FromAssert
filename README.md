@@ -17,7 +17,7 @@ Shouldly.FromAssert is a Roslyn analyzer that helps you migrate from traditional
   - Basic assertions (`Assert.AreEqual` → `ShouldBe`)
   - String assertions (`StringAssert.Contains` → `ShouldContain`)
   - Collection assertions (`CollectionAssert.Contains` → `ShouldContain`)
-  - Type assertions (`Assert.IsInstanceOf` → `ShouldBeOfType`)
+  - Type assertions (`Assert.IsInstanceOf` → `ShouldBeOfType`; `Is.TypeOf<T>()` → `ShouldBeOfType<T>()`, `Is.InstanceOf<T>()` → `ShouldBeAssignableTo<T>()`, with `Is.Not` and `typeof(T)` forms)
   - And many more!
 
 ## Installation

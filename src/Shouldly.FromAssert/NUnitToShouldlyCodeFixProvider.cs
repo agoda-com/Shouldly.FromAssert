@@ -393,21 +393,6 @@ namespace Shouldly.FromAssert
                     }
 
                     break;
-                case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "TypeOf":
-                    return SyntaxFactory.InvocationExpression(
-                            SyntaxFactory.MemberAccessExpression(
-                                SyntaxKind.SimpleMemberAccessExpression,
-                                arguments[0].Expression,
-                                SyntaxFactory.GenericName(SyntaxFactory.Identifier("ShouldBeOfType"))
-                                    .WithTypeArgumentList(
-                                        SyntaxFactory.TypeArgumentList(
-                                            SyntaxFactory.SingletonSeparatedList(
-                                                ((TypeOfExpressionSyntax) inv.ArgumentList.Arguments[0].Expression)
-                                                .Type)))),
-                            SyntaxFactory.ArgumentList())
-                        .WithLeadingTrivia(invocation.GetLeadingTrivia());
                 case "IsNotInstanceOf" when assertClass == "Assert":
                     if (invocation.Expression is MemberAccessExpressionSyntax memberAccess1 &&
                         memberAccess1.Name is GenericNameSyntax genericName1)
@@ -425,28 +410,6 @@ namespace Shouldly.FromAssert
 
                     break;
 
-                case "That" when arguments.Count == 2 && arguments[1].Expression is InvocationExpressionSyntax inv &&
-                                 inv.Expression is MemberAccessExpressionSyntax ma &&
-                                 ma.Name.Identifier.Text == "Not" &&
-                                 ma.Expression is MemberAccessExpressionSyntax innerMa &&
-                                 innerMa.Name.Identifier.Text == "TypeOf":
-                    if (inv.ArgumentList.Arguments.Count > 0 &&
-                        inv.ArgumentList.Arguments[0].Expression is TypeOfExpressionSyntax typeOfExpr)
-                    {
-                        return SyntaxFactory.InvocationExpression(
-                                SyntaxFactory.MemberAccessExpression(
-                                    SyntaxKind.SimpleMemberAccessExpression,
-                                    arguments[0].Expression,
-                                    SyntaxFactory.GenericName(
-                                            SyntaxFactory.Identifier("ShouldNotBeOfType"))
-                                        .WithTypeArgumentList(
-                                            SyntaxFactory.TypeArgumentList(
-                                                SyntaxFactory.SingletonSeparatedList(typeOfExpr.Type)))),
-                                SyntaxFactory.ArgumentList())
-                            .WithLeadingTrivia(invocation.GetLeadingTrivia());
-                    }
-
-                    break;
                 case "Contains" when assertClass == "StringAssert":
                     return SyntaxFactory.InvocationExpression(
                             SyntaxFactory.MemberAccessExpression(
