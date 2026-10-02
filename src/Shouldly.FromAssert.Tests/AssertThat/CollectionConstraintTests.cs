@@ -55,7 +55,8 @@ public class CollectionConstraintTests
         yield return new TestCaseData(
             "var contestants = new List<int> { 1337 };",
             "[|Assert.That(contestants, Is.Not.Null.And.Not.Empty)|];",
-            "contestants.ShouldNotBeNull();\n            contestants.ShouldNotBeEmpty();"
+            @"contestants.ShouldNotBeNull();
+            contestants.ShouldNotBeEmpty();"
         ).SetName("Assert.That with Is.Not.Null.And.Not.Empty on a collection");
 
         yield return new TestCaseData(
@@ -73,7 +74,9 @@ public class CollectionConstraintTests
         yield return new TestCaseData(
             "var contestants = new List<int> { 1337 };",
             "[|Assert.That(contestants, Is.Not.Null.And.Not.Empty.And.Unique)|];",
-            "contestants.ShouldNotBeNull();\n            contestants.ShouldNotBeEmpty();\n            contestants.ShouldBeUnique();"
+            @"contestants.ShouldNotBeNull();
+            contestants.ShouldNotBeEmpty();
+            contestants.ShouldBeUnique();"
         ).SetName("Assert.That with Is.Not.Null.And.Not.Empty followed by another link");
 
         yield return new TestCaseData(
